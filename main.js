@@ -39,7 +39,7 @@ var MAX_COURSE_CONCURRENCY = 10;
 var MAX_CHAPTER_CONCURRENCY = 20;
 var LANGUAGE_OPTIONS = {
   en: "English",
-  zh: "\u4E2D\u6587",
+  zh: "\u7B80\u4F53\u4E2D\u6587",
   zh_tw: "\u7E41\u9AD4\u4E2D\u6587",
   ja: "\u65E5\u672C\u8A9E",
   ko: "\uD55C\uAD6D\uC5B4",

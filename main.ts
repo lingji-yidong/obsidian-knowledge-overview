@@ -40,7 +40,7 @@ const MAX_CHAPTER_CONCURRENCY = 20;
 
 const LANGUAGE_OPTIONS: Record<string, string> = {
   en: "English",
-  zh: "中文",
+  zh: "简体中文",
   zh_tw: "繁體中文",
   ja: "日本語",
   ko: "한국어",
