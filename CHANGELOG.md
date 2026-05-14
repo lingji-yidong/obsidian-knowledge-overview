@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.2
+
+- Align release metadata with Obsidian community plugin guidelines.
+- Rename the display name to Knowledge Overview.
+- Add privacy and security notes to the README.
+- Change the default outline and chapter models to `gpt-5.4-mini`.
+
 ## 0.0.1
 
 - Initial open-source release.

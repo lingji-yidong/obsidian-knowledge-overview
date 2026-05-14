@@ -83,15 +83,9 @@ Signal Processing/
 └── 03_Wavelet_Transform.md
 ```
 
-## Screenshots
+## Demo
 
-Screenshots and a short demo GIF should be added before submitting to the
-Obsidian community plugin list. Recommended captures:
-
-- Settings tab with provider, model, concurrency, and language options.
-- Subject generation modal.
-- Generated `Outlines.md` and chapter notes.
-- Mobile ribbon entry and progress notice.
+[Demo video](screenshot/demo.mp4)
 
 ## Settings
 
