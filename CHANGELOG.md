@@ -2,12 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.0.3
 
 - Change the default provider to Google's OpenAI-compatible Gemini endpoint.
 - Change the default outline and chapter models to `gemini-2.5-flash`.
 - Change default concurrency to `1` for stability on free or rate-limited providers.
 - Improve chapter prompts to reduce preamble and encourage richer explanations.
+- Update README positioning around background learning and research preparation.
 
 ## 0.0.2
 

@@ -2,7 +2,7 @@
 
 Knowledge Overview is an Obsidian plugin that uses OpenAI-compatible LLM
 providers to generate structured subject overviews, study outlines, and chapter
-notes for review and interview preparation.
+notes for background learning, course review, and research preparation.
 
 ## Features
 
@@ -11,8 +11,8 @@ notes for review and interview preparation.
 - Start generation from the command palette or the ribbon icon.
 - Resume failed chapters from `Failed_Chapters.md` without regenerating the
   entire outline.
-- Use review and interview-oriented prompts instead of application-specific
-  audit prompts.
+- Use learning-oriented prompts for concept explanations, formulas, examples,
+  applications, and common misunderstandings.
 - Choose from common European and Asian output languages.
 - Include English plus target-language terminology for key concepts.
 - Render formulas with Obsidian-compatible KaTeX blocks.
