@@ -235,6 +235,22 @@ function parseChapterTitles(outline: string): Array<[string, string]> {
   return chapters;
 }
 
+function parseFailedChapters(report: string): Array<[string, string]> {
+  const chapters: Array<[string, string]> = [];
+  const chapterPattern = /^\s*-\s*(\d+)\.\s*(.+?)\s*$/;
+
+  for (const line of report.split("\n")) {
+    const match = line.match(chapterPattern);
+    if (!match) {
+      continue;
+    }
+
+    chapters.push([match[1], match[2].trim()]);
+  }
+
+  return chapters;
+}
+
 /* ================= SEMAPHORE FOR CONCURRENCY CONTROL ================= */
 
 class Semaphore {
@@ -295,6 +311,14 @@ export default class KnowledgePlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "resume-failed-chapters",
+      name: "Resume Failed Chapter Generation",
+      callback: () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      },
+    });
+
     const ribbonIcon = this.addRibbonIcon(
       "book-open",
       "Generate Knowledge Overview",
@@ -303,6 +327,15 @@ export default class KnowledgePlugin extends Plugin {
       },
     );
     ribbonIcon.addClass("knowledge-ribbon-icon");
+
+    const resumeRibbonIcon = this.addRibbonIcon(
+      "refresh-cw",
+      "Resume Failed Chapter Generation",
+      () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      },
+    );
+    resumeRibbonIcon.addClass("knowledge-ribbon-icon");
 
     this.addSettingTab(new SettingTab(this.app, this));
   }
@@ -323,6 +356,11 @@ export default class KnowledgePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  getActiveCourseName(): string {
+    const activeFile = this.app.workspace.getActiveFile();
+    return activeFile?.parent?.path ?? "";
   }
 
   setupProgressStatus(): void {
@@ -484,7 +522,14 @@ export default class KnowledgePlugin extends Plugin {
 
         // 寫入文件
         const filePath = normalizePath(`${courseFolder.path}/${fileName}`);
-        await this.app.vault.create(filePath, fullContent);
+        const existing = this.app.vault.getAbstractFileByPath(filePath);
+        if (existing instanceof TFile) {
+          await this.app.vault.modify(existing, fullContent);
+        } else if (existing) {
+          throw new Error(`Path "${filePath}" exists and is not a file`);
+        } else {
+          await this.app.vault.create(filePath, fullContent);
+        }
 
         new Notice(`✓ ${fileName}`);
         result = {
@@ -549,6 +594,114 @@ export default class KnowledgePlugin extends Plugin {
       await this.app.vault.modify(existing, content);
     } else {
       await this.app.vault.create(reportPath, content);
+    }
+  }
+
+  async clearFailureReport(courseFolder: TFolder, courseName: string): Promise<void> {
+    const reportPath = normalizePath(`${courseFolder.path}/Failed_Chapters.md`);
+    const existing = this.app.vault.getAbstractFileByPath(reportPath);
+    const content = [
+      `# ${courseName} Failed Chapters`,
+      "",
+      `Resolved at: ${new Date().toLocaleString()}`,
+      "",
+      "All previously failed chapters were generated successfully.",
+      "",
+    ].join("\n");
+
+    if (existing instanceof TFile) {
+      await this.app.vault.modify(existing, content);
+    }
+  }
+
+  async resumeFailedChapters(courseName: string): Promise<void> {
+    if (!this.settings.apiKey) {
+      new Notice("❌ API Key not set! Please configure it in settings.");
+      return;
+    }
+
+    const folderPath = normalizePath(courseName.trim());
+    if (!folderPath) {
+      new Notice("Please enter a subject folder name");
+      return;
+    }
+
+    const courseFolder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!(courseFolder instanceof TFolder)) {
+      new Notice(`❌ Folder not found: ${folderPath}`, 7000);
+      return;
+    }
+
+    const reportPath = normalizePath(`${courseFolder.path}/Failed_Chapters.md`);
+    const reportFile = this.app.vault.getAbstractFileByPath(reportPath);
+    if (!(reportFile instanceof TFile)) {
+      new Notice(`No Failed_Chapters.md found in ${courseFolder.path}`, 7000);
+      return;
+    }
+
+    const report = await this.app.vault.read(reportFile);
+    const chapters = parseFailedChapters(report);
+
+    if (chapters.length === 0) {
+      new Notice("No failed chapters found to resume");
+      this.finishProgress("No failed chapters found");
+      return;
+    }
+
+    new Notice(`🔁 Resuming ${chapters.length} failed chapters`);
+    this.showProgress(`Resuming failed chapters: 0/${chapters.length}`, 5);
+
+    try {
+      const chapterSem = new Semaphore(this.settings.chapterConcurrency);
+      let completedChapters = 0;
+      let failedChapters = 0;
+      const updateProgress = (result: ChapterGenerationResult) => {
+        completedChapters += 1;
+        if (!result.success) {
+          failedChapters += 1;
+        }
+
+        const percent = 5 + Math.round((completedChapters / chapters.length) * 90);
+        this.showProgress(
+          `Resumed ${completedChapters}/${chapters.length}, ${failedChapters} failed`,
+          percent,
+        );
+      };
+
+      const results = await Promise.all(
+        chapters.map((chapterInfo) =>
+          this.generateChapterContent(
+            courseFolder,
+            chapterInfo,
+            courseFolder.path,
+            chapterSem,
+            updateProgress,
+          ),
+        ),
+      );
+
+      const failedResults = results.filter((result) => !result.success);
+      const successCount = results.length - failedResults.length;
+
+      if (failedResults.length > 0) {
+        await this.writeFailureReport(courseFolder, courseFolder.path, failedResults);
+        new Notice(
+          `⚠️ Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
+          10000,
+        );
+        this.finishProgress(
+          `Resume finished: ${successCount}/${chapters.length} generated, ${failedResults.length} failed`,
+        );
+      } else {
+        await this.clearFailureReport(courseFolder, courseFolder.path);
+        new Notice(`✅ Resume complete: ${chapters.length} chapters generated`);
+        this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      new Notice(`❌ Resume failed: ${errorMsg}`, 7000);
+      this.finishProgress(`Resume failed: ${errorMsg}`);
+      console.error("Resume generation error:", error);
     }
   }
 
@@ -652,6 +805,7 @@ export default class KnowledgePlugin extends Plugin {
           `Done: ${successCount}/${chapters.length} chapters generated, ${failedResults.length} failed`,
         );
       } else {
+        await this.clearFailureReport(courseFolder, courseName);
         new Notice(
           `✅ Done! Generated ${chapters.length} chapters for ${courseName}`,
         );
@@ -698,6 +852,56 @@ class InputModal extends Modal {
       }
       this.close();
       void this.plugin.generate(subject);
+    };
+
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        button.click();
+      }
+    });
+  }
+}
+
+class ResumeFailedModal extends Modal {
+  plugin: KnowledgePlugin;
+  initialCourseName: string;
+
+  constructor(app: App, plugin: KnowledgePlugin, initialCourseName: string) {
+    super(app);
+    this.plugin = plugin;
+    this.initialCourseName = initialCourseName;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("knowledge-input-modal");
+
+    contentEl.createEl("p", {
+      cls: "knowledge-modal-help",
+      text: "Resume chapters listed in Failed_Chapters.md for a subject folder.",
+    });
+
+    const input = contentEl.createEl("input", {
+      type: "text",
+      placeholder: "Subject folder (e.g. Signal Processing)",
+      value: this.initialCourseName,
+    });
+
+    const button = contentEl.createEl("button", {
+      text: "Resume failed chapters",
+    });
+
+    button.onclick = async () => {
+      const subject = input.value.trim();
+      if (!subject) {
+        new Notice("Please enter a subject folder name");
+        return;
+      }
+
+      this.close();
+      void this.plugin.resumeFailedChapters(subject);
     };
 
     input.focus();

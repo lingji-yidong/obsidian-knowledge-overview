@@ -182,6 +182,18 @@ function parseChapterTitles(outline) {
   }
   return chapters;
 }
+function parseFailedChapters(report) {
+  const chapters = [];
+  const chapterPattern = /^\s*-\s*(\d+)\.\s*(.+?)\s*$/;
+  for (const line of report.split("\n")) {
+    const match = line.match(chapterPattern);
+    if (!match) {
+      continue;
+    }
+    chapters.push([match[1], match[2].trim()]);
+  }
+  return chapters;
+}
 var Semaphore = class {
   constructor(permits) {
     this.queue = [];
@@ -224,6 +236,13 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         new InputModal(this.app, this).open();
       }
     });
+    this.addCommand({
+      id: "resume-failed-chapters",
+      name: "Resume Failed Chapter Generation",
+      callback: () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      }
+    });
     const ribbonIcon = this.addRibbonIcon(
       "book-open",
       "Generate Knowledge Overview",
@@ -232,6 +251,14 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       }
     );
     ribbonIcon.addClass("knowledge-ribbon-icon");
+    const resumeRibbonIcon = this.addRibbonIcon(
+      "refresh-cw",
+      "Resume Failed Chapter Generation",
+      () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      }
+    );
+    resumeRibbonIcon.addClass("knowledge-ribbon-icon");
     this.addSettingTab(new SettingTab(this.app, this));
   }
   async loadSettings() {
@@ -249,6 +276,11 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   }
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+  getActiveCourseName() {
+    var _a, _b;
+    const activeFile = this.app.workspace.getActiveFile();
+    return (_b = (_a = activeFile == null ? void 0 : activeFile.parent) == null ? void 0 : _a.path) != null ? _b : "";
   }
   setupProgressStatus() {
     this.progressStatusEl = this.addStatusBarItem();
@@ -380,7 +412,14 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
 `;
         const fullContent = header + chapterContent;
         const filePath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/${fileName}`);
-        await this.app.vault.create(filePath, fullContent);
+        const existing = this.app.vault.getAbstractFileByPath(filePath);
+        if (existing instanceof import_obsidian.TFile) {
+          await this.app.vault.modify(existing, fullContent);
+        } else if (existing) {
+          throw new Error(`Path "${filePath}" exists and is not a file`);
+        } else {
+          await this.app.vault.create(filePath, fullContent);
+        }
         new import_obsidian.Notice(`\u2713 ${fileName}`);
         result = {
           chapterNum,
@@ -436,6 +475,100 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       await this.app.vault.modify(existing, content);
     } else {
       await this.app.vault.create(reportPath, content);
+    }
+  }
+  async clearFailureReport(courseFolder, courseName) {
+    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const existing = this.app.vault.getAbstractFileByPath(reportPath);
+    const content = [
+      `# ${courseName} Failed Chapters`,
+      "",
+      `Resolved at: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+      "",
+      "All previously failed chapters were generated successfully.",
+      ""
+    ].join("\n");
+    if (existing instanceof import_obsidian.TFile) {
+      await this.app.vault.modify(existing, content);
+    }
+  }
+  async resumeFailedChapters(courseName) {
+    if (!this.settings.apiKey) {
+      new import_obsidian.Notice("\u274C API Key not set! Please configure it in settings.");
+      return;
+    }
+    const folderPath = (0, import_obsidian.normalizePath)(courseName.trim());
+    if (!folderPath) {
+      new import_obsidian.Notice("Please enter a subject folder name");
+      return;
+    }
+    const courseFolder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!(courseFolder instanceof import_obsidian.TFolder)) {
+      new import_obsidian.Notice(`\u274C Folder not found: ${folderPath}`, 7e3);
+      return;
+    }
+    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const reportFile = this.app.vault.getAbstractFileByPath(reportPath);
+    if (!(reportFile instanceof import_obsidian.TFile)) {
+      new import_obsidian.Notice(`No Failed_Chapters.md found in ${courseFolder.path}`, 7e3);
+      return;
+    }
+    const report = await this.app.vault.read(reportFile);
+    const chapters = parseFailedChapters(report);
+    if (chapters.length === 0) {
+      new import_obsidian.Notice("No failed chapters found to resume");
+      this.finishProgress("No failed chapters found");
+      return;
+    }
+    new import_obsidian.Notice(`\u{1F501} Resuming ${chapters.length} failed chapters`);
+    this.showProgress(`Resuming failed chapters: 0/${chapters.length}`, 5);
+    try {
+      const chapterSem = new Semaphore(this.settings.chapterConcurrency);
+      let completedChapters = 0;
+      let failedChapters = 0;
+      const updateProgress = (result) => {
+        completedChapters += 1;
+        if (!result.success) {
+          failedChapters += 1;
+        }
+        const percent = 5 + Math.round(completedChapters / chapters.length * 90);
+        this.showProgress(
+          `Resumed ${completedChapters}/${chapters.length}, ${failedChapters} failed`,
+          percent
+        );
+      };
+      const results = await Promise.all(
+        chapters.map(
+          (chapterInfo) => this.generateChapterContent(
+            courseFolder,
+            chapterInfo,
+            courseFolder.path,
+            chapterSem,
+            updateProgress
+          )
+        )
+      );
+      const failedResults = results.filter((result) => !result.success);
+      const successCount = results.length - failedResults.length;
+      if (failedResults.length > 0) {
+        await this.writeFailureReport(courseFolder, courseFolder.path, failedResults);
+        new import_obsidian.Notice(
+          `\u26A0\uFE0F Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
+          1e4
+        );
+        this.finishProgress(
+          `Resume finished: ${successCount}/${chapters.length} generated, ${failedResults.length} failed`
+        );
+      } else {
+        await this.clearFailureReport(courseFolder, courseFolder.path);
+        new import_obsidian.Notice(`\u2705 Resume complete: ${chapters.length} chapters generated`);
+        this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      new import_obsidian.Notice(`\u274C Resume failed: ${errorMsg}`, 7e3);
+      this.finishProgress(`Resume failed: ${errorMsg}`);
+      console.error("Resume generation error:", error);
     }
   }
   async generate(courseName) {
@@ -521,6 +654,7 @@ ${outline}`;
           `Done: ${successCount}/${chapters.length} chapters generated, ${failedResults.length} failed`
         );
       } else {
+        await this.clearFailureReport(courseFolder, courseName);
         new import_obsidian.Notice(
           `\u2705 Done! Generated ${chapters.length} chapters for ${courseName}`
         );
@@ -558,6 +692,45 @@ var InputModal = class extends import_obsidian.Modal {
       }
       this.close();
       void this.plugin.generate(subject);
+    };
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        button.click();
+      }
+    });
+  }
+};
+var ResumeFailedModal = class extends import_obsidian.Modal {
+  constructor(app, plugin, initialCourseName) {
+    super(app);
+    this.plugin = plugin;
+    this.initialCourseName = initialCourseName;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("knowledge-input-modal");
+    contentEl.createEl("p", {
+      cls: "knowledge-modal-help",
+      text: "Resume chapters listed in Failed_Chapters.md for a subject folder."
+    });
+    const input = contentEl.createEl("input", {
+      type: "text",
+      placeholder: "Subject folder (e.g. Signal Processing)",
+      value: this.initialCourseName
+    });
+    const button = contentEl.createEl("button", {
+      text: "Resume failed chapters"
+    });
+    button.onclick = async () => {
+      const subject = input.value.trim();
+      if (!subject) {
+        new import_obsidian.Notice("Please enter a subject folder name");
+        return;
+      }
+      this.close();
+      void this.plugin.resumeFailedChapters(subject);
     };
     input.focus();
     input.addEventListener("keydown", (e) => {

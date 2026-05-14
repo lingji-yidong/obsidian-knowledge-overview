@@ -9,6 +9,8 @@ chapter notes for review and interview preparation.
 - Generate a course outline from a subject name.
 - Generate one Markdown note per outline chapter.
 - Start generation from the command palette or the ribbon icon.
+- Resume failed chapters from `Failed_Chapters.md` without regenerating the
+  entire outline.
 - Use review and interview-oriented prompts instead of application-specific
   audit prompts.
 - Choose from common European and Asian output languages.
@@ -66,6 +68,10 @@ Then copy `main.js`, `manifest.json`, and `styles.css` into:
 3. Enter a subject, for example `Signal Processing`.
 4. The plugin creates a subject folder containing `Outlines.md` and one note
    per generated chapter.
+
+To continue failed chapters later, run `Resume Failed Chapter Generation` from
+the command palette or the resume ribbon icon, then enter the subject folder
+name. The plugin reads `Failed_Chapters.md` and retries only those chapters.
 
 Example output:
 
