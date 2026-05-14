@@ -37,6 +37,8 @@ var DEFAULT_SETTINGS = {
 var MIN_CONCURRENCY = 1;
 var MAX_COURSE_CONCURRENCY = 10;
 var MAX_CHAPTER_CONCURRENCY = 20;
+var MAX_API_RETRIES = 2;
+var RETRY_BASE_DELAY_MS = 1500;
 var LANGUAGE_OPTIONS = {
   en: "English",
   zh: "\u7B80\u4F53\u4E2D\u6587",
@@ -143,6 +145,19 @@ function clampInteger(value, min, max) {
   }
   return Math.min(Math.max(Math.floor(value), min), max);
 }
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+function isRetryableStatus(status) {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+var ApiError = class extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+};
 function slugifyTitle(title) {
   let safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
   return safe.replace(/\s+/g, "_") || "chapter";
@@ -209,6 +224,14 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         new InputModal(this.app, this).open();
       }
     });
+    const ribbonIcon = this.addRibbonIcon(
+      "book-open",
+      "Generate Knowledge Overview",
+      () => {
+        new InputModal(this.app, this).open();
+      }
+    );
+    ribbonIcon.addClass("knowledge-ribbon-icon");
     this.addSettingTab(new SettingTab(this.app, this));
   }
   async loadSettings() {
@@ -230,6 +253,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   setupProgressStatus() {
     this.progressStatusEl = this.addStatusBarItem();
     this.progressStatusEl.addClass("knowledge-progress-status");
+    if (import_obsidian.Platform.isMobile) {
+      this.progressStatusEl.addClass("knowledge-progress-mobile");
+    }
     this.progressStatusEl.empty();
     this.progressLabelEl = this.progressStatusEl.createSpan({
       cls: "knowledge-progress-label"
@@ -243,20 +269,28 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     this.hideProgress();
   }
   showProgress(label, percent) {
-    if (!this.progressStatusEl || !this.progressLabelEl || !this.progressFillEl) {
-      return;
-    }
     const safePercent = clampInteger(percent, 0, 100);
-    this.progressStatusEl.removeClass("knowledge-progress-hidden");
-    this.progressLabelEl.setText(label);
-    this.progressFillEl.style.width = `${safePercent}%`;
+    const message = `${label} (${safePercent}%)`;
+    if (this.progressStatusEl && this.progressLabelEl && this.progressFillEl) {
+      this.progressStatusEl.removeClass("knowledge-progress-hidden");
+      this.progressLabelEl.setText(label);
+      this.progressFillEl.style.width = `${safePercent}%`;
+    }
+    if (!this.progressNotice) {
+      this.progressNotice = new import_obsidian.Notice(message, 0);
+      this.progressNotice.containerEl.addClass("knowledge-progress-notice");
+    } else {
+      this.progressNotice.setMessage(message);
+    }
   }
   hideProgress() {
-    var _a;
+    var _a, _b;
     (_a = this.progressStatusEl) == null ? void 0 : _a.addClass("knowledge-progress-hidden");
     if (this.progressFillEl) {
       this.progressFillEl.style.width = "0%";
     }
+    (_b = this.progressNotice) == null ? void 0 : _b.hide();
+    this.progressNotice = void 0;
   }
   finishProgress(label) {
     this.showProgress(label, 100);
@@ -264,6 +298,26 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   }
   /* ================= API CALLS ================= */
   async callLLM(prompt, model) {
+    let lastError;
+    for (let attempt = 0; attempt <= MAX_API_RETRIES; attempt++) {
+      try {
+        return await this.callLLMOnce(prompt, model);
+      } catch (error) {
+        lastError = error;
+        const isLastAttempt = attempt === MAX_API_RETRIES;
+        const status = error instanceof ApiError ? error.status : void 0;
+        const retryable = status === void 0 || isRetryableStatus(status);
+        if (isLastAttempt || !retryable) {
+          throw error;
+        }
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        this.showProgress(`Retrying API request ${attempt + 1}/${MAX_API_RETRIES}`, 10);
+        await sleep(delay);
+      }
+    }
+    throw lastError;
+  }
+  async callLLMOnce(prompt, model) {
     const res = await (0, import_obsidian.requestUrl)({
       url: `${this.settings.apiBaseUrl}/chat/completions`,
       method: "POST",
@@ -277,7 +331,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       })
     });
     if (res.status < 200 || res.status >= 300) {
-      throw new Error(`API Error: ${res.status} - ${res.text}`);
+      throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
     }
     const data = res.json;
     return data.choices[0].message.content;
@@ -307,7 +361,8 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   /* ================= CORE GENERATION LOGIC ================= */
   async generateChapterContent(courseFolder, chapterInfo, courseName, sem, onComplete) {
     const [chapterNum, title] = chapterInfo;
-    await sem.run(async () => {
+    return await sem.run(async () => {
+      let result;
       try {
         const chapterContent = await this.fetchChapterNote(courseName, title);
         const numStr = String(parseInt(chapterNum)).padStart(2, "0");
@@ -327,6 +382,12 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         const filePath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/${fileName}`);
         await this.app.vault.create(filePath, fullContent);
         new import_obsidian.Notice(`\u2713 ${fileName}`);
+        result = {
+          chapterNum,
+          title,
+          fileName,
+          success: true
+        };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         new import_obsidian.Notice(
@@ -337,10 +398,45 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
           `Error generating chapter ${chapterNum} (${title}):`,
           error
         );
+        result = {
+          chapterNum,
+          title,
+          success: false,
+          error: errorMsg
+        };
       } finally {
-        onComplete == null ? void 0 : onComplete();
+        onComplete == null ? void 0 : onComplete(result);
       }
+      return result;
     });
+  }
+  async writeFailureReport(courseFolder, courseName, failedChapters) {
+    if (failedChapters.length === 0) {
+      return;
+    }
+    const content = [
+      `# ${courseName} Failed Chapters`,
+      "",
+      `Generated at: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+      "",
+      "The plugin retried transient API failures before writing this report.",
+      "You can run generation again later after lowering concurrency or switching to a more stable provider.",
+      "",
+      ...failedChapters.reduce((lines, chapter) => {
+        var _a;
+        lines.push(`- ${chapter.chapterNum}. ${chapter.title}`);
+        lines.push(`  - Error: ${(_a = chapter.error) != null ? _a : "Unknown error"}`);
+        return lines;
+      }, []),
+      ""
+    ].join("\n");
+    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const existing = this.app.vault.getAbstractFileByPath(reportPath);
+    if (existing instanceof import_obsidian.TFile) {
+      await this.app.vault.modify(existing, content);
+    } else {
+      await this.app.vault.create(reportPath, content);
+    }
   }
   async generate(courseName) {
     if (!this.settings.apiKey) {
@@ -391,11 +487,15 @@ ${outline}`;
       this.showProgress(`0/${chapters.length} chapters generated`, 15);
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
       let completedChapters = 0;
-      const updateChapterProgress = () => {
+      let failedChapters = 0;
+      const updateChapterProgress = (result) => {
         completedChapters += 1;
+        if (!result.success) {
+          failedChapters += 1;
+        }
         const percent = 15 + Math.round(completedChapters / chapters.length * 80);
         this.showProgress(
-          `${completedChapters}/${chapters.length} chapters generated`,
+          `${completedChapters}/${chapters.length} chapters done, ${failedChapters} failed`,
           percent
         );
       };
@@ -408,11 +508,24 @@ ${outline}`;
           updateChapterProgress
         )
       );
-      await Promise.all(tasks);
-      new import_obsidian.Notice(
-        `\u2705 Done! Generated ${chapters.length} chapters for ${courseName}`
-      );
-      this.finishProgress(`Done: ${chapters.length} chapters generated`);
+      const results = await Promise.all(tasks);
+      const failedResults = results.filter((result) => !result.success);
+      await this.writeFailureReport(courseFolder, courseName, failedResults);
+      const successCount = results.length - failedResults.length;
+      if (failedResults.length > 0) {
+        new import_obsidian.Notice(
+          `\u26A0\uFE0F Done with failures: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
+          1e4
+        );
+        this.finishProgress(
+          `Done: ${successCount}/${chapters.length} chapters generated, ${failedResults.length} failed`
+        );
+      } else {
+        new import_obsidian.Notice(
+          `\u2705 Done! Generated ${chapters.length} chapters for ${courseName}`
+        );
+        this.finishProgress(`Done: ${chapters.length} chapters generated`);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new import_obsidian.Notice(`\u274C Error: ${errorMsg}`, 5e3);

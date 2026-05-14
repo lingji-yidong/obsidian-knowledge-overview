@@ -8,12 +8,16 @@ chapter notes for review and interview preparation.
 
 - Generate a course outline from a subject name.
 - Generate one Markdown note per outline chapter.
+- Start generation from the command palette or the ribbon icon.
 - Use review and interview-oriented prompts instead of application-specific
   audit prompts.
 - Choose from common European and Asian output languages.
 - Include English plus target-language terminology for key concepts.
 - Render formulas with Obsidian-compatible KaTeX blocks.
 - Configure API base URL, models, and manual concurrency.
+- Show generation progress in the status bar and an updateable notice for
+  mobile.
+- Retry transient API failures and write failed chapters to `Failed_Chapters.md`.
 
 ## Requirements
 
@@ -85,6 +89,10 @@ Signal Processing/
 
 Keep concurrency small unless your provider is stable under parallel requests
 and has sufficient rate limits.
+
+If the network is unstable, transient provider errors are retried automatically.
+Any chapters that still fail are listed in `Failed_Chapters.md` inside the
+generated subject folder.
 
 ## Supported Languages
 

@@ -4,8 +4,10 @@ import {
   Notice,
   Plugin,
   PluginSettingTab,
+  Platform,
   requestUrl,
   Setting,
+  TFile,
   TFolder,
   normalizePath,
 } from "obsidian";
@@ -35,6 +37,8 @@ const DEFAULT_SETTINGS: MySettings = {
 const MIN_CONCURRENCY = 1;
 const MAX_COURSE_CONCURRENCY = 10;
 const MAX_CHAPTER_CONCURRENCY = 20;
+const MAX_API_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 1500;
 
 /* ================= PROMPTS ================= */
 
@@ -169,6 +173,32 @@ function clampInteger(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.floor(value), min), max);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+
+interface ChapterGenerationResult {
+  chapterNum: string;
+  title: string;
+  fileName?: string;
+  success: boolean;
+  error?: string;
+}
+
+class ApiError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 /* ================= UTILITY FUNCTIONS ================= */
 
 function slugifyTitle(title: string): string {
@@ -251,6 +281,7 @@ export default class KnowledgePlugin extends Plugin {
   private progressStatusEl?: HTMLElement;
   private progressLabelEl?: HTMLElement;
   private progressFillEl?: HTMLElement;
+  private progressNotice?: Notice;
 
   async onload() {
     await this.loadSettings();
@@ -263,6 +294,15 @@ export default class KnowledgePlugin extends Plugin {
         new InputModal(this.app, this).open();
       },
     });
+
+    const ribbonIcon = this.addRibbonIcon(
+      "book-open",
+      "Generate Knowledge Overview",
+      () => {
+        new InputModal(this.app, this).open();
+      },
+    );
+    ribbonIcon.addClass("knowledge-ribbon-icon");
 
     this.addSettingTab(new SettingTab(this.app, this));
   }
@@ -288,6 +328,9 @@ export default class KnowledgePlugin extends Plugin {
   setupProgressStatus(): void {
     this.progressStatusEl = this.addStatusBarItem();
     this.progressStatusEl.addClass("knowledge-progress-status");
+    if (Platform.isMobile) {
+      this.progressStatusEl.addClass("knowledge-progress-mobile");
+    }
     this.progressStatusEl.empty();
 
     this.progressLabelEl = this.progressStatusEl.createSpan({
@@ -305,14 +348,21 @@ export default class KnowledgePlugin extends Plugin {
   }
 
   showProgress(label: string, percent: number): void {
-    if (!this.progressStatusEl || !this.progressLabelEl || !this.progressFillEl) {
-      return;
+    const safePercent = clampInteger(percent, 0, 100);
+    const message = `${label} (${safePercent}%)`;
+
+    if (this.progressStatusEl && this.progressLabelEl && this.progressFillEl) {
+      this.progressStatusEl.removeClass("knowledge-progress-hidden");
+      this.progressLabelEl.setText(label);
+      this.progressFillEl.style.width = `${safePercent}%`;
     }
 
-    const safePercent = clampInteger(percent, 0, 100);
-    this.progressStatusEl.removeClass("knowledge-progress-hidden");
-    this.progressLabelEl.setText(label);
-    this.progressFillEl.style.width = `${safePercent}%`;
+    if (!this.progressNotice) {
+      this.progressNotice = new Notice(message, 0);
+      this.progressNotice.containerEl.addClass("knowledge-progress-notice");
+    } else {
+      this.progressNotice.setMessage(message);
+    }
   }
 
   hideProgress(): void {
@@ -320,6 +370,8 @@ export default class KnowledgePlugin extends Plugin {
     if (this.progressFillEl) {
       this.progressFillEl.style.width = "0%";
     }
+    this.progressNotice?.hide();
+    this.progressNotice = undefined;
   }
 
   finishProgress(label: string): void {
@@ -330,6 +382,31 @@ export default class KnowledgePlugin extends Plugin {
   /* ================= API CALLS ================= */
 
   async callLLM(prompt: string, model: string): Promise<string> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= MAX_API_RETRIES; attempt++) {
+      try {
+        return await this.callLLMOnce(prompt, model);
+      } catch (error) {
+        lastError = error;
+        const isLastAttempt = attempt === MAX_API_RETRIES;
+        const status = error instanceof ApiError ? error.status : undefined;
+        const retryable = status === undefined || isRetryableStatus(status);
+
+        if (isLastAttempt || !retryable) {
+          throw error;
+        }
+
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        this.showProgress(`Retrying API request ${attempt + 1}/${MAX_API_RETRIES}`, 10);
+        await sleep(delay);
+      }
+    }
+
+    throw lastError;
+  }
+
+  async callLLMOnce(prompt: string, model: string): Promise<string> {
     const res = await requestUrl({
       url: `${this.settings.apiBaseUrl}/chat/completions`,
       method: "POST",
@@ -344,7 +421,7 @@ export default class KnowledgePlugin extends Plugin {
     });
 
     if (res.status < 200 || res.status >= 300) {
-      throw new Error(`API Error: ${res.status} - ${res.text}`);
+      throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
     }
 
     const data = res.json;
@@ -385,11 +462,12 @@ export default class KnowledgePlugin extends Plugin {
     chapterInfo: [string, string],
     courseName: string,
     sem: Semaphore,
-    onComplete?: () => void,
-  ): Promise<void> {
+    onComplete?: (result: ChapterGenerationResult) => void,
+  ): Promise<ChapterGenerationResult> {
     const [chapterNum, title] = chapterInfo;
 
-    await sem.run(async () => {
+    return await sem.run(async () => {
+      let result: ChapterGenerationResult;
       try {
         // 生成章節知識點
         const chapterContent = await this.fetchChapterNote(courseName, title);
@@ -409,6 +487,12 @@ export default class KnowledgePlugin extends Plugin {
         await this.app.vault.create(filePath, fullContent);
 
         new Notice(`✓ ${fileName}`);
+        result = {
+          chapterNum,
+          title,
+          fileName,
+          success: true,
+        };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         new Notice(
@@ -419,10 +503,53 @@ export default class KnowledgePlugin extends Plugin {
           `Error generating chapter ${chapterNum} (${title}):`,
           error,
         );
+        result = {
+          chapterNum,
+          title,
+          success: false,
+          error: errorMsg,
+        };
       } finally {
-        onComplete?.();
+        onComplete?.(result!);
       }
+
+      return result!;
     });
+  }
+
+  async writeFailureReport(
+    courseFolder: TFolder,
+    courseName: string,
+    failedChapters: ChapterGenerationResult[],
+  ): Promise<void> {
+    if (failedChapters.length === 0) {
+      return;
+    }
+
+    const content = [
+      `# ${courseName} Failed Chapters`,
+      "",
+      `Generated at: ${new Date().toLocaleString()}`,
+      "",
+      "The plugin retried transient API failures before writing this report.",
+      "You can run generation again later after lowering concurrency or switching to a more stable provider.",
+      "",
+      ...failedChapters.reduce<string[]>((lines, chapter) => {
+        lines.push(`- ${chapter.chapterNum}. ${chapter.title}`);
+        lines.push(`  - Error: ${chapter.error ?? "Unknown error"}`);
+        return lines;
+      }, []),
+      "",
+    ].join("\n");
+
+    const reportPath = normalizePath(`${courseFolder.path}/Failed_Chapters.md`);
+    const existing = this.app.vault.getAbstractFileByPath(reportPath);
+
+    if (existing instanceof TFile) {
+      await this.app.vault.modify(existing, content);
+    } else {
+      await this.app.vault.create(reportPath, content);
+    }
   }
 
   async generate(courseName: string) {
@@ -489,11 +616,15 @@ export default class KnowledgePlugin extends Plugin {
       // 5. 並發生成章節知識點
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
       let completedChapters = 0;
-      const updateChapterProgress = () => {
+      let failedChapters = 0;
+      const updateChapterProgress = (result: ChapterGenerationResult) => {
         completedChapters += 1;
+        if (!result.success) {
+          failedChapters += 1;
+        }
         const percent = 15 + Math.round((completedChapters / chapters.length) * 80);
         this.showProgress(
-          `${completedChapters}/${chapters.length} chapters generated`,
+          `${completedChapters}/${chapters.length} chapters done, ${failedChapters} failed`,
           percent,
         );
       };
@@ -507,12 +638,25 @@ export default class KnowledgePlugin extends Plugin {
         ),
       );
 
-      await Promise.all(tasks);
+      const results = await Promise.all(tasks);
+      const failedResults = results.filter((result) => !result.success);
+      await this.writeFailureReport(courseFolder, courseName, failedResults);
 
-      new Notice(
-        `✅ Done! Generated ${chapters.length} chapters for ${courseName}`,
-      );
-      this.finishProgress(`Done: ${chapters.length} chapters generated`);
+      const successCount = results.length - failedResults.length;
+      if (failedResults.length > 0) {
+        new Notice(
+          `⚠️ Done with failures: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
+          10000,
+        );
+        this.finishProgress(
+          `Done: ${successCount}/${chapters.length} chapters generated, ${failedResults.length} failed`,
+        );
+      } else {
+        new Notice(
+          `✅ Done! Generated ${chapters.length} chapters for ${courseName}`,
+        );
+        this.finishProgress(`Done: ${chapters.length} chapters generated`);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`❌ Error: ${errorMsg}`, 5000);

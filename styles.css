@@ -75,3 +75,11 @@
   background-color: var(--interactive-accent);
   transition: width 0.2s ease;
 }
+
+.knowledge-progress-notice {
+  min-width: 260px;
+}
+
+.knowledge-ribbon-icon {
+  color: var(--text-muted);
+}
