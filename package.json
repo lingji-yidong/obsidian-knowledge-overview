@@ -1,7 +1,7 @@
 {
   "name": "obsidian-knowledge-overview",
   "version": "0.0.1",
-  "description": "Generate multilingual review and interview notes in Obsidian with OpenAI-compatible LLM providers.",
+  "description": "Generate structured subject overviews using AI.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",

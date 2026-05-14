@@ -1,10 +1,10 @@
 {
     "id": "knowledge-overview",
-    "name": "Knowledge Overview Generator",
+    "name": "Knowledge Overview",
     "version": "0.0.1",
     "minAppVersion": "1.5.0",
-    "description": "Generate multilingual review and interview notes with OpenAI-compatible LLM providers.",
+    "description": "Generate structured subject overviews using AI.",
     "author": "lingji-yidong",
-    "authorUrl": "",
+    "authorUrl": "https://github.com/lingji-yidong",
     "isDesktopOnly": false
 }

@@ -1,8 +1,8 @@
-# Knowledge Overview Generator
+# Knowledge Overview
 
-Knowledge Overview Generator is an Obsidian plugin that uses
-OpenAI-compatible LLM providers to generate structured study outlines and
-chapter notes for review and interview preparation.
+Knowledge Overview is an Obsidian plugin that uses OpenAI-compatible LLM
+providers to generate structured subject overviews, study outlines, and chapter
+notes for review and interview preparation.
 
 ## Features
 
@@ -44,7 +44,7 @@ still depends on the configured provider and the device network environment.
 
 3. Copy the three files into that folder.
 4. Reload Obsidian.
-5. Enable `Knowledge Overview Generator` in `Settings > Community plugins`.
+5. Enable `Knowledge Overview` in `Settings > Community plugins`.
 
 ### From Source
 
@@ -83,6 +83,16 @@ Signal Processing/
 └── 03_Wavelet_Transform.md
 ```
 
+## Screenshots
+
+Screenshots and a short demo GIF should be added before submitting to the
+Obsidian community plugin list. Recommended captures:
+
+- Settings tab with provider, model, concurrency, and language options.
+- Subject generation modal.
+- Generated `Outlines.md` and chapter notes.
+- Mobile ribbon entry and progress notice.
+
 ## Settings
 
 - `OpenAI API Key`: API key for your provider.
@@ -113,8 +123,16 @@ The plugin calls the `/chat/completions` endpoint and should work with OpenAI
 and OpenAI-compatible providers. Provider quality, latency, context limits,
 and rate limits directly affect generation quality and stability.
 
-Your API key is stored in Obsidian plugin data in your vault. Do not publish
-plugin data files or screenshots containing secrets.
+## Privacy and Security
+
+API keys are stored locally in Obsidian plugin data inside your vault. Do not
+publish plugin data files or screenshots containing secrets.
+
+The plugin sends the subject name and generated chapter prompts to the API
+provider you configure. It does not include analytics, telemetry, remote code
+loading, shell execution, `eval`, or bundled API keys.
+
+Generated Markdown files are written only to your current vault.
 
 ## Development
 
