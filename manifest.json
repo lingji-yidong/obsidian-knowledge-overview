@@ -1,0 +1,10 @@
+{
+    "id": "knowledge-overview",
+    "name": "Knowledge Overview Generator",
+    "version": "0.0.1",
+    "minAppVersion": "1.5.0",
+    "description": "Generate multilingual review and interview notes with OpenAI-compatible LLM providers.",
+    "author": "lingji-yidong",
+    "authorUrl": "",
+    "isDesktopOnly": false
+}

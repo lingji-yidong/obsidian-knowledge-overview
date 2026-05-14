@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.zip
+data.json
+*.hot-update.*
+coverage/
+dist/
+.env
+.env.*
