@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.5
+
+- Address Obsidian automated review findings.
+- Add GitHub artifact attestations for release assets.
+- Add release notes to generated GitHub releases.
+
 ## 0.0.4
 
 - Update the minimum supported Obsidian version to `1.12.7`.

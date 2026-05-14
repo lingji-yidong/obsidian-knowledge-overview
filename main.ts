@@ -215,6 +215,14 @@ interface ChapterGenerationResult {
   error?: string;
 }
 
+interface ChatCompletionResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 class ApiError extends Error {
   status?: number;
 
@@ -223,6 +231,28 @@ class ApiError extends Error {
     this.name = "ApiError";
     this.status = status;
   }
+}
+
+function isChatCompletionResponse(value: unknown): value is ChatCompletionResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const choices = (value as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    return false;
+  }
+
+  const firstChoice = choices[0] as { message?: unknown };
+  if (!firstChoice.message || typeof firstChoice.message !== "object") {
+    return false;
+  }
+
+  return typeof (firstChoice.message as { content?: unknown }).content === "string";
+}
+
+function errorToMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /* ================= UTILITY FUNCTIONS ================= */
@@ -331,7 +361,7 @@ export default class KnowledgePlugin extends Plugin {
 
     this.addCommand({
       id: "generate-knowledge",
-      name: "Generate Knowledge Overview",
+      name: "Generate Knowledge",
       callback: () => {
         new InputModal(this.app, this).open();
       },
@@ -367,7 +397,8 @@ export default class KnowledgePlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedSettings = (await this.loadData()) as Partial<MySettings> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings ?? {});
     this.settings.concurrency = clampInteger(
       this.settings.concurrency,
       MIN_CONCURRENCY,
@@ -418,7 +449,9 @@ export default class KnowledgePlugin extends Plugin {
     if (this.progressStatusEl && this.progressLabelEl && this.progressFillEl) {
       this.progressStatusEl.removeClass("knowledge-progress-hidden");
       this.progressLabelEl.setText(label);
-      this.progressFillEl.style.width = `${safePercent}%`;
+      this.progressFillEl.setCssProps({
+        "--knowledge-progress-width": `${safePercent}%`,
+      });
     }
 
     if (!this.progressNotice) {
@@ -432,7 +465,9 @@ export default class KnowledgePlugin extends Plugin {
   hideProgress(): void {
     this.progressStatusEl?.addClass("knowledge-progress-hidden");
     if (this.progressFillEl) {
-      this.progressFillEl.style.width = "0%";
+      this.progressFillEl.setCssProps({
+        "--knowledge-progress-width": "0%",
+      });
     }
     this.progressNotice?.hide();
     this.progressNotice = undefined;
@@ -488,7 +523,11 @@ export default class KnowledgePlugin extends Plugin {
       throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
     }
 
-    const data = res.json;
+    const data: unknown = res.json;
+    if (!isChatCompletionResponse(data)) {
+      throw new Error("API response did not include a message content");
+    }
+
     return data.choices[0].message.content;
   }
 
@@ -565,7 +604,7 @@ export default class KnowledgePlugin extends Plugin {
           success: true,
         };
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorMsg = errorToMessage(error);
         new Notice(
           `✗ Error generating chapter ${chapterNum}: ${errorMsg}`,
           5000,
@@ -724,7 +763,7 @@ export default class KnowledgePlugin extends Plugin {
         this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = errorToMessage(error);
       new Notice(`❌ Resume failed: ${errorMsg}`, 7000);
       this.finishProgress(`Resume failed: ${errorMsg}`);
       console.error("Resume generation error:", error);
@@ -767,7 +806,9 @@ export default class KnowledgePlugin extends Plugin {
           courseFolder = await this.app.vault.createFolder(folderPath);
           new Notice(`📁 Created folder: ${courseName}`);
         } catch (error) {
-          throw new Error(`Failed to create folder "${folderPath}": ${error}`);
+          throw new Error(
+            `Failed to create folder "${folderPath}": ${errorToMessage(error)}`,
+          );
         }
       }
 
@@ -838,7 +879,7 @@ export default class KnowledgePlugin extends Plugin {
         this.finishProgress(`Done: ${chapters.length} chapters generated`);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = errorToMessage(error);
       new Notice(`❌ Error: ${errorMsg}`, 5000);
       this.finishProgress(`Failed: ${errorMsg}`);
       console.error("Generation error:", error);
@@ -954,7 +995,7 @@ class SettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
 
-    containerEl.createEl("h2", { text: "Knowledge Overview Settings" });
+    new Setting(containerEl).setName("Knowledge Overview Settings").setHeading();
 
     new Setting(containerEl)
       .setName("API Key")

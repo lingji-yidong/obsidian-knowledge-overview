@@ -184,6 +184,23 @@ var ApiError = class extends Error {
     this.status = status;
   }
 };
+function isChatCompletionResponse(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const choices = value.choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    return false;
+  }
+  const firstChoice = choices[0];
+  if (!firstChoice.message || typeof firstChoice.message !== "object") {
+    return false;
+  }
+  return typeof firstChoice.message.content === "string";
+}
+function errorToMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 function slugifyTitle(title) {
   let safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
   return safe.replace(/\s+/g, "_") || "chapter";
@@ -257,7 +274,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     this.setupProgressStatus();
     this.addCommand({
       id: "generate-knowledge",
-      name: "Generate Knowledge Overview",
+      name: "Generate Knowledge",
       callback: () => {
         new InputModal(this.app, this).open();
       }
@@ -288,7 +305,8 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     this.addSettingTab(new SettingTab(this.app, this));
   }
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loadedSettings = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings != null ? loadedSettings : {});
     this.settings.concurrency = clampInteger(
       this.settings.concurrency,
       MIN_CONCURRENCY,
@@ -332,7 +350,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     if (this.progressStatusEl && this.progressLabelEl && this.progressFillEl) {
       this.progressStatusEl.removeClass("knowledge-progress-hidden");
       this.progressLabelEl.setText(label);
-      this.progressFillEl.style.width = `${safePercent}%`;
+      this.progressFillEl.setCssProps({
+        "--knowledge-progress-width": `${safePercent}%`
+      });
     }
     if (!this.progressNotice) {
       this.progressNotice = new import_obsidian.Notice(message, 0);
@@ -345,7 +365,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     var _a, _b;
     (_a = this.progressStatusEl) == null ? void 0 : _a.addClass("knowledge-progress-hidden");
     if (this.progressFillEl) {
-      this.progressFillEl.style.width = "0%";
+      this.progressFillEl.setCssProps({
+        "--knowledge-progress-width": "0%"
+      });
     }
     (_b = this.progressNotice) == null ? void 0 : _b.hide();
     this.progressNotice = void 0;
@@ -392,6 +414,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
     }
     const data = res.json;
+    if (!isChatCompletionResponse(data)) {
+      throw new Error("API response did not include a message content");
+    }
     return data.choices[0].message.content;
   }
   async fetchOutline(courseName) {
@@ -454,7 +479,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
           success: true
         };
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorMsg = errorToMessage(error);
         new import_obsidian.Notice(
           `\u2717 Error generating chapter ${chapterNum}: ${errorMsg}`,
           5e3
@@ -591,7 +616,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = errorToMessage(error);
       new import_obsidian.Notice(`\u274C Resume failed: ${errorMsg}`, 7e3);
       this.finishProgress(`Resume failed: ${errorMsg}`);
       console.error("Resume generation error:", error);
@@ -623,7 +648,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
           courseFolder = await this.app.vault.createFolder(folderPath);
           new import_obsidian.Notice(`\u{1F4C1} Created folder: ${courseName}`);
         } catch (error) {
-          throw new Error(`Failed to create folder "${folderPath}": ${error}`);
+          throw new Error(
+            `Failed to create folder "${folderPath}": ${errorToMessage(error)}`
+          );
         }
       }
       const headerText = getHeaderText(this.settings.language);
@@ -687,7 +714,7 @@ ${outline}`;
         this.finishProgress(`Done: ${chapters.length} chapters generated`);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = errorToMessage(error);
       new import_obsidian.Notice(`\u274C Error: ${errorMsg}`, 5e3);
       this.finishProgress(`Failed: ${errorMsg}`);
       console.error("Generation error:", error);
@@ -775,7 +802,7 @@ var SettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
-    containerEl.createEl("h2", { text: "Knowledge Overview Settings" });
+    new import_obsidian.Setting(containerEl).setName("Knowledge Overview Settings").setHeading();
     new import_obsidian.Setting(containerEl).setName("API Key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
       (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
         this.plugin.settings.apiKey = value;
