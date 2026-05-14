@@ -1,8 +1,8 @@
 {
     "id": "knowledge-overview",
     "name": "Knowledge Overview",
-    "version": "0.0.3",
-    "minAppVersion": "1.5.0",
+    "version": "0.0.4",
+    "minAppVersion": "1.12.7",
     "description": "Generate structured subject overviews using AI.",
     "author": "lingji-yidong",
     "authorUrl": "https://github.com/lingji-yidong",

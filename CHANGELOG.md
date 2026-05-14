@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.4
+
+- Update the minimum supported Obsidian version to `1.12.7`.
+
 ## 0.0.3
 
 - Change the default provider to Google's OpenAI-compatible Gemini endpoint.

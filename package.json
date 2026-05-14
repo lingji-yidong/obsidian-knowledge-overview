@@ -1,6 +1,6 @@
 {
   "name": "obsidian-knowledge-overview",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Generate structured subject overviews using AI.",
   "main": "main.js",
   "scripts": {

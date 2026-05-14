@@ -23,7 +23,7 @@ notes for background learning, course review, and research preparation.
 
 ## Requirements
 
-- Obsidian 1.5.0 or later.
+- Obsidian 1.12.7 or later.
 - An API key for Google Gemini, OpenAI, or another OpenAI-compatible provider.
 
 The plugin is not desktop-only. It avoids Electron and Node-only APIs and is
