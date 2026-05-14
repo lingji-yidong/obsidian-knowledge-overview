@@ -995,7 +995,7 @@ class SettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
 
-    new Setting(containerEl).setName("Knowledge Overview Settings").setHeading();
+    new Setting(containerEl).setName("Configuration").setHeading();
 
     new Setting(containerEl)
       .setName("API Key")

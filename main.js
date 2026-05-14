@@ -802,7 +802,7 @@ var SettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
-    new import_obsidian.Setting(containerEl).setName("Knowledge Overview Settings").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Configuration").setHeading();
     new import_obsidian.Setting(containerEl).setName("API Key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
       (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
         this.plugin.settings.apiKey = value;

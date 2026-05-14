@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.6
+
+- Update the settings tab heading to satisfy Obsidian review guidelines.
+
 ## 0.0.5
 
 - Address Obsidian automated review findings.
