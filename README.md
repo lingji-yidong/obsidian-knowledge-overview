@@ -85,7 +85,7 @@ Signal Processing/
 
 ## Demo
 
-https://github.com/user-attachments/assets/25644f8e-725d-4def-bb8d-1c752b711079
+![Knowledge Overview demo](screenshot/demo.png)
 
 ## Settings
 
