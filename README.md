@@ -24,7 +24,7 @@ notes for review and interview preparation.
 ## Requirements
 
 - Obsidian 1.5.0 or later.
-- An API key for OpenAI or another OpenAI-compatible provider.
+- An API key for Google Gemini, OpenAI, or another OpenAI-compatible provider.
 
 The plugin is not desktop-only. It avoids Electron and Node-only APIs and is
 intended to run on both desktop and mobile Obsidian. Mobile network behavior
@@ -89,16 +89,24 @@ Signal Processing/
 
 ## Settings
 
-- `OpenAI API Key`: API key for your provider.
-- `API Base URL`: OpenAI-compatible API endpoint.
-- `Outline Model`: model used for outline generation.
-- `Chapter Model`: model used for chapter notes.
-- `Concurrency`: manual course-level concurrency, default `2`.
-- `Chapter Concurrency`: manual chapter-generation concurrency, default `3`.
+- `API Key`: API key for your provider.
+- `API Base URL`: OpenAI-compatible API endpoint. Default:
+  `https://generativelanguage.googleapis.com/v1beta/openai`.
+- `Outline Model`: model used for outline generation. Default:
+  `gemini-2.5-flash`.
+- `Chapter Model`: model used for chapter notes. Default:
+  `gemini-2.5-flash`.
+- `Concurrency`: manual course-level concurrency, default `1`.
+- `Chapter Concurrency`: manual chapter-generation concurrency, default `1`.
 - `Language`: target output language.
 
-Keep concurrency small unless your provider is stable under parallel requests
-and has sufficient rate limits.
+The default settings favor stability on free or rate-limited providers. Keep
+concurrency small unless your provider is stable under parallel requests and
+has sufficient rate limits.
+
+Medium-sized or stronger models usually generate richer chapter notes than
+small or lite models. Very small models may follow the structure but produce
+shorter explanations.
 
 If the network is unstable, transient provider errors are retried automatically.
 Any chapters that still fail are listed in `Failed_Chapters.md` inside the
@@ -113,9 +121,10 @@ Polish, Turkish, and Russian.
 
 ## API Providers
 
-The plugin calls the `/chat/completions` endpoint and should work with OpenAI
-and OpenAI-compatible providers. Provider quality, latency, context limits,
-and rate limits directly affect generation quality and stability.
+The plugin calls the `/chat/completions` endpoint and should work with Google
+Gemini's OpenAI-compatible endpoint, OpenAI, and other OpenAI-compatible
+providers. Provider quality, latency, context limits, and rate limits directly
+affect generation quality and stability.
 
 ## Privacy and Security
 

@@ -2,12 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Change the default provider to Google's OpenAI-compatible Gemini endpoint.
+- Change the default outline and chapter models to `gemini-2.5-flash`.
+- Change default concurrency to `1` for stability on free or rate-limited providers.
+- Improve chapter prompts to reduce preamble and encourage richer explanations.
+
 ## 0.0.2
 
 - Align release metadata with Obsidian community plugin guidelines.
 - Rename the display name to Knowledge Overview.
 - Add privacy and security notes to the README.
-- Change the default outline and chapter models to `gpt-5.4-mini`.
 
 ## 0.0.1
 
