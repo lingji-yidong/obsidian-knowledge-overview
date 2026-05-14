@@ -20,6 +20,10 @@ chapter notes for review and interview preparation.
 - Obsidian 1.5.0 or later.
 - An API key for OpenAI or another OpenAI-compatible provider.
 
+The plugin is not desktop-only. It avoids Electron and Node-only APIs and is
+intended to run on both desktop and mobile Obsidian. Mobile network behavior
+still depends on the configured provider and the device network environment.
+
 ## Installation
 
 ### Manual Install

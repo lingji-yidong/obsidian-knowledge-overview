@@ -4,6 +4,7 @@ import {
   Notice,
   Plugin,
   PluginSettingTab,
+  requestUrl,
   Setting,
   TFolder,
   normalizePath,
@@ -329,7 +330,8 @@ export default class KnowledgePlugin extends Plugin {
   /* ================= API CALLS ================= */
 
   async callLLM(prompt: string, model: string): Promise<string> {
-    const res = await fetch(`${this.settings.apiBaseUrl}/chat/completions`, {
+    const res = await requestUrl({
+      url: `${this.settings.apiBaseUrl}/chat/completions`,
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.settings.apiKey}`,
@@ -341,12 +343,11 @@ export default class KnowledgePlugin extends Plugin {
       }),
     });
 
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(`API Error: ${res.status} - ${error}`);
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`API Error: ${res.status} - ${res.text}`);
     }
 
-    const data = await res.json();
+    const data = res.json;
     return data.choices[0].message.content;
   }
 

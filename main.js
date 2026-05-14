@@ -264,7 +264,8 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   }
   /* ================= API CALLS ================= */
   async callLLM(prompt, model) {
-    const res = await fetch(`${this.settings.apiBaseUrl}/chat/completions`, {
+    const res = await (0, import_obsidian.requestUrl)({
+      url: `${this.settings.apiBaseUrl}/chat/completions`,
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.settings.apiKey}`,
@@ -275,11 +276,10 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         messages: [{ role: "user", content: prompt }]
       })
     });
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(`API Error: ${res.status} - ${error}`);
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`API Error: ${res.status} - ${res.text}`);
     }
-    const data = await res.json();
+    const data = res.json;
     return data.choices[0].message.content;
   }
   async fetchOutline(courseName) {
