@@ -122,22 +122,41 @@ function buildChapterPrompt(
 `;
 }
 
-const HEADER_TEXT: Record<string, { chapterNumber: string; generated: string }> = {
+const HEADER_TEXT: Record<
+  string,
+  {
+    outlineTitle: string;
+    generatedAt: string;
+    chapterNumber: string;
+    generated: string;
+  }
+> = {
   en: {
+    outlineTitle: "Outline",
+    generatedAt: "Generated at",
     chapterNumber: "Chapter",
     generated: "Auto-generated review and interview notes. Edit freely.",
   },
   zh: {
+    outlineTitle: "大綱",
+    generatedAt: "自動生成時間",
     chapterNumber: "章節編號",
     generated: "自動生成的複習/面試知識點，可自由編輯補充",
   },
   zh_tw: {
+    outlineTitle: "大綱",
+    generatedAt: "自動生成時間",
     chapterNumber: "章節編號",
     generated: "自動生成的複習/面試知識點，可自由編輯補充",
   },
 };
 
-function getHeaderText(language: string): { chapterNumber: string; generated: string } {
+function getHeaderText(language: string): {
+  outlineTitle: string;
+  generatedAt: string;
+  chapterNumber: string;
+  generated: string;
+} {
   return HEADER_TEXT[language] ?? HEADER_TEXT.en;
 }
 
@@ -228,9 +247,13 @@ class Semaphore {
 
 export default class KnowledgePlugin extends Plugin {
   settings!: MySettings;
+  private progressStatusEl?: HTMLElement;
+  private progressLabelEl?: HTMLElement;
+  private progressFillEl?: HTMLElement;
 
   async onload() {
     await this.loadSettings();
+    this.setupProgressStatus();
 
     this.addCommand({
       id: "generate-knowledge",
@@ -259,6 +282,48 @@ export default class KnowledgePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  setupProgressStatus(): void {
+    this.progressStatusEl = this.addStatusBarItem();
+    this.progressStatusEl.addClass("knowledge-progress-status");
+    this.progressStatusEl.empty();
+
+    this.progressLabelEl = this.progressStatusEl.createSpan({
+      cls: "knowledge-progress-label",
+    });
+
+    const track = this.progressStatusEl.createDiv({
+      cls: "knowledge-progress-track",
+    });
+    this.progressFillEl = track.createDiv({
+      cls: "knowledge-progress-fill",
+    });
+
+    this.hideProgress();
+  }
+
+  showProgress(label: string, percent: number): void {
+    if (!this.progressStatusEl || !this.progressLabelEl || !this.progressFillEl) {
+      return;
+    }
+
+    const safePercent = clampInteger(percent, 0, 100);
+    this.progressStatusEl.removeClass("knowledge-progress-hidden");
+    this.progressLabelEl.setText(label);
+    this.progressFillEl.style.width = `${safePercent}%`;
+  }
+
+  hideProgress(): void {
+    this.progressStatusEl?.addClass("knowledge-progress-hidden");
+    if (this.progressFillEl) {
+      this.progressFillEl.style.width = "0%";
+    }
+  }
+
+  finishProgress(label: string): void {
+    this.showProgress(label, 100);
+    window.setTimeout(() => this.hideProgress(), 5000);
   }
 
   /* ================= API CALLS ================= */
@@ -319,6 +384,7 @@ export default class KnowledgePlugin extends Plugin {
     chapterInfo: [string, string],
     courseName: string,
     sem: Semaphore,
+    onComplete?: () => void,
   ): Promise<void> {
     const [chapterNum, title] = chapterInfo;
 
@@ -352,6 +418,8 @@ export default class KnowledgePlugin extends Plugin {
           `Error generating chapter ${chapterNum} (${title}):`,
           error,
         );
+      } finally {
+        onComplete?.();
       }
     });
   }
@@ -363,9 +431,11 @@ export default class KnowledgePlugin extends Plugin {
     }
 
     new Notice(`📚 Generating: ${courseName}`);
+    this.showProgress(`Starting ${courseName}`, 1);
 
     try {
       // 1. 生成大綱
+      this.showProgress(`Generating outline: ${courseName}`, 5);
       new Notice("⏳ Generating outline...");
       const outline = await this.fetchOutline(courseName);
 
@@ -395,9 +465,11 @@ export default class KnowledgePlugin extends Plugin {
       }
 
       // 3. 寫入大綱文件
-      const outlineContent = `# ${courseName} 大綱\n\n*自動生成時間：${new Date().toLocaleString()}*\n\n${outline}`;
+      const headerText = getHeaderText(this.settings.language);
+      const outlineContent = `# ${courseName} ${headerText.outlineTitle}\n\n*${headerText.generatedAt}: ${new Date().toLocaleString()}*\n\n${outline}`;
       const outlineFilePath = normalizePath(`${courseFolder.path}/Outlines.md`);
       await this.app.vault.create(outlineFilePath, outlineContent);
+      this.showProgress(`Outline saved: ${courseName}`, 15);
 
       new Notice("✓ Outlines.md created");
 
@@ -406,19 +478,31 @@ export default class KnowledgePlugin extends Plugin {
 
       if (chapters.length === 0) {
         new Notice("⚠️ No chapters found in outline");
+        this.finishProgress("No chapters found");
         return;
       }
 
       new Notice(`📖 Found ${chapters.length} chapters, generating content...`);
+      this.showProgress(`0/${chapters.length} chapters generated`, 15);
 
       // 5. 並發生成章節知識點
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
+      let completedChapters = 0;
+      const updateChapterProgress = () => {
+        completedChapters += 1;
+        const percent = 15 + Math.round((completedChapters / chapters.length) * 80);
+        this.showProgress(
+          `${completedChapters}/${chapters.length} chapters generated`,
+          percent,
+        );
+      };
       const tasks = chapters.map((chapterInfo) =>
         this.generateChapterContent(
           courseFolder,
           chapterInfo,
           courseName,
           chapterSem,
+          updateChapterProgress,
         ),
       );
 
@@ -427,9 +511,11 @@ export default class KnowledgePlugin extends Plugin {
       new Notice(
         `✅ Done! Generated ${chapters.length} chapters for ${courseName}`,
       );
+      this.finishProgress(`Done: ${chapters.length} chapters generated`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new Notice(`❌ Error: ${errorMsg}`, 5000);
+      this.finishProgress(`Failed: ${errorMsg}`);
       console.error("Generation error:", error);
     }
   }
@@ -465,8 +551,8 @@ class InputModal extends Modal {
         new Notice("Please enter a subject name");
         return;
       }
-      await this.plugin.generate(subject);
       this.close();
+      void this.plugin.generate(subject);
     };
 
     input.focus();

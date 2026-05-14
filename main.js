@@ -115,14 +115,20 @@ function buildChapterPrompt(courseName, chapterName, language) {
 }
 var HEADER_TEXT = {
   en: {
+    outlineTitle: "Outline",
+    generatedAt: "Generated at",
     chapterNumber: "Chapter",
     generated: "Auto-generated review and interview notes. Edit freely."
   },
   zh: {
+    outlineTitle: "\u5927\u7DB1",
+    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
     chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
     generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
   },
   zh_tw: {
+    outlineTitle: "\u5927\u7DB1",
+    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
     chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
     generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
   }
@@ -195,6 +201,7 @@ var Semaphore = class {
 var KnowledgePlugin = class extends import_obsidian.Plugin {
   async onload() {
     await this.loadSettings();
+    this.setupProgressStatus();
     this.addCommand({
       id: "generate-knowledge",
       name: "Generate Knowledge Overview",
@@ -219,6 +226,41 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   }
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+  setupProgressStatus() {
+    this.progressStatusEl = this.addStatusBarItem();
+    this.progressStatusEl.addClass("knowledge-progress-status");
+    this.progressStatusEl.empty();
+    this.progressLabelEl = this.progressStatusEl.createSpan({
+      cls: "knowledge-progress-label"
+    });
+    const track = this.progressStatusEl.createDiv({
+      cls: "knowledge-progress-track"
+    });
+    this.progressFillEl = track.createDiv({
+      cls: "knowledge-progress-fill"
+    });
+    this.hideProgress();
+  }
+  showProgress(label, percent) {
+    if (!this.progressStatusEl || !this.progressLabelEl || !this.progressFillEl) {
+      return;
+    }
+    const safePercent = clampInteger(percent, 0, 100);
+    this.progressStatusEl.removeClass("knowledge-progress-hidden");
+    this.progressLabelEl.setText(label);
+    this.progressFillEl.style.width = `${safePercent}%`;
+  }
+  hideProgress() {
+    var _a;
+    (_a = this.progressStatusEl) == null ? void 0 : _a.addClass("knowledge-progress-hidden");
+    if (this.progressFillEl) {
+      this.progressFillEl.style.width = "0%";
+    }
+  }
+  finishProgress(label) {
+    this.showProgress(label, 100);
+    window.setTimeout(() => this.hideProgress(), 5e3);
   }
   /* ================= API CALLS ================= */
   async callLLM(prompt, model) {
@@ -263,7 +305,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     }
   }
   /* ================= CORE GENERATION LOGIC ================= */
-  async generateChapterContent(courseFolder, chapterInfo, courseName, sem) {
+  async generateChapterContent(courseFolder, chapterInfo, courseName, sem, onComplete) {
     const [chapterNum, title] = chapterInfo;
     await sem.run(async () => {
       try {
@@ -295,6 +337,8 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
           `Error generating chapter ${chapterNum} (${title}):`,
           error
         );
+      } finally {
+        onComplete == null ? void 0 : onComplete();
       }
     });
   }
@@ -304,7 +348,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       return;
     }
     new import_obsidian.Notice(`\u{1F4DA} Generating: ${courseName}`);
+    this.showProgress(`Starting ${courseName}`, 1);
     try {
+      this.showProgress(`Generating outline: ${courseName}`, 5);
       new import_obsidian.Notice("\u23F3 Generating outline...");
       const outline = await this.fetchOutline(courseName);
       const folderPath = (0, import_obsidian.normalizePath)(courseName);
@@ -325,36 +371,52 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
           throw new Error(`Failed to create folder "${folderPath}": ${error}`);
         }
       }
-      const outlineContent = `# ${courseName} \u5927\u7DB1
+      const headerText = getHeaderText(this.settings.language);
+      const outlineContent = `# ${courseName} ${headerText.outlineTitle}
 
-*\u81EA\u52D5\u751F\u6210\u6642\u9593\uFF1A${(/* @__PURE__ */ new Date()).toLocaleString()}*
+*${headerText.generatedAt}: ${(/* @__PURE__ */ new Date()).toLocaleString()}*
 
 ${outline}`;
       const outlineFilePath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Outlines.md`);
       await this.app.vault.create(outlineFilePath, outlineContent);
+      this.showProgress(`Outline saved: ${courseName}`, 15);
       new import_obsidian.Notice("\u2713 Outlines.md created");
       const chapters = parseChapterTitles(outline);
       if (chapters.length === 0) {
         new import_obsidian.Notice("\u26A0\uFE0F No chapters found in outline");
+        this.finishProgress("No chapters found");
         return;
       }
       new import_obsidian.Notice(`\u{1F4D6} Found ${chapters.length} chapters, generating content...`);
+      this.showProgress(`0/${chapters.length} chapters generated`, 15);
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
+      let completedChapters = 0;
+      const updateChapterProgress = () => {
+        completedChapters += 1;
+        const percent = 15 + Math.round(completedChapters / chapters.length * 80);
+        this.showProgress(
+          `${completedChapters}/${chapters.length} chapters generated`,
+          percent
+        );
+      };
       const tasks = chapters.map(
         (chapterInfo) => this.generateChapterContent(
           courseFolder,
           chapterInfo,
           courseName,
-          chapterSem
+          chapterSem,
+          updateChapterProgress
         )
       );
       await Promise.all(tasks);
       new import_obsidian.Notice(
         `\u2705 Done! Generated ${chapters.length} chapters for ${courseName}`
       );
+      this.finishProgress(`Done: ${chapters.length} chapters generated`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       new import_obsidian.Notice(`\u274C Error: ${errorMsg}`, 5e3);
+      this.finishProgress(`Failed: ${errorMsg}`);
       console.error("Generation error:", error);
     }
   }
@@ -381,8 +443,8 @@ var InputModal = class extends import_obsidian.Modal {
         new import_obsidian.Notice("Please enter a subject name");
         return;
       }
-      await this.plugin.generate(subject);
       this.close();
+      void this.plugin.generate(subject);
     };
     input.focus();
     input.addEventListener("keydown", (e) => {
