@@ -761,24 +761,15 @@ var SettingTab = class extends import_obsidian3.PluginSettingTab {
 
 // src/plugin.ts
 var KnowledgePlugin = class extends import_obsidian4.Plugin {
+  constructor() {
+    super(...arguments);
+    this.commandsRegistered = false;
+  }
   async onload() {
     await this.loadSettings();
     this.setupProgressStatus();
     const uiText = getUiText(this.settings.language);
-    this.addCommand({
-      id: "generate-knowledge",
-      name: uiText.generateKnowledge,
-      callback: () => {
-        new InputModal(this.app, this).open();
-      }
-    });
-    this.addCommand({
-      id: "resume-failed-chapters",
-      name: uiText.resumeFailedChapters,
-      callback: () => {
-        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
-      }
-    });
+    this.registerLocalizedCommands(uiText);
     this.generateRibbonIcon = this.addRibbonIcon(
       "book-open",
       uiText.generateKnowledge,
@@ -819,8 +810,32 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   }
   refreshLocalizedUi() {
     const uiText = getUiText(this.settings.language);
+    this.registerLocalizedCommands(uiText);
     this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
     this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
+  }
+  registerLocalizedCommands(uiText) {
+    if (this.commandsRegistered) {
+      this.removeCommand("generate-knowledge");
+      this.removeCommand("resume-failed-chapters");
+    }
+    this.addCommand({
+      id: "generate-knowledge",
+      name: uiText.generateKnowledge,
+      icon: "book-open",
+      callback: () => {
+        new InputModal(this.app, this).open();
+      }
+    });
+    this.addCommand({
+      id: "resume-failed-chapters",
+      name: uiText.resumeFailedChapters,
+      icon: "refresh-cw",
+      callback: () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      }
+    });
+    this.commandsRegistered = true;
   }
   updateRibbonLabel(ribbonIcon, label) {
     if (!ribbonIcon) {

@@ -8,7 +8,7 @@ import {
   setTooltip,
 } from "obsidian";
 import { ApiError, callChatCompletion, isRetryableStatus } from "./api";
-import { getHeaderText, getUiText } from "./i18n";
+import { getHeaderText, getUiText, type UiText } from "./i18n";
 import { InputModal, ResumeFailedModal } from "./modals";
 import { buildChapterPrompt, buildOutlinePrompt } from "./prompts";
 import { SettingTab } from "./settings-tab";
@@ -41,27 +41,14 @@ export default class KnowledgePlugin extends Plugin {
   private progressNotice?: Notice;
   private generateRibbonIcon?: HTMLElement;
   private resumeRibbonIcon?: HTMLElement;
+  private commandsRegistered = false;
 
   async onload() {
     await this.loadSettings();
     this.setupProgressStatus();
     const uiText = getUiText(this.settings.language);
 
-    this.addCommand({
-      id: "generate-knowledge",
-      name: uiText.generateKnowledge,
-      callback: () => {
-        new InputModal(this.app, this).open();
-      },
-    });
-
-    this.addCommand({
-      id: "resume-failed-chapters",
-      name: uiText.resumeFailedChapters,
-      callback: () => {
-        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
-      },
-    });
+    this.registerLocalizedCommands(uiText);
 
     this.generateRibbonIcon = this.addRibbonIcon(
       "book-open",
@@ -108,8 +95,36 @@ export default class KnowledgePlugin extends Plugin {
 
   refreshLocalizedUi(): void {
     const uiText = getUiText(this.settings.language);
+    this.registerLocalizedCommands(uiText);
     this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
     this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
+  }
+
+  private registerLocalizedCommands(uiText: UiText): void {
+    if (this.commandsRegistered) {
+      this.removeCommand("generate-knowledge");
+      this.removeCommand("resume-failed-chapters");
+    }
+
+    this.addCommand({
+      id: "generate-knowledge",
+      name: uiText.generateKnowledge,
+      icon: "book-open",
+      callback: () => {
+        new InputModal(this.app, this).open();
+      },
+    });
+
+    this.addCommand({
+      id: "resume-failed-chapters",
+      name: uiText.resumeFailedChapters,
+      icon: "refresh-cw",
+      callback: () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      },
+    });
+
+    this.commandsRegistered = true;
   }
 
   private updateRibbonLabel(
