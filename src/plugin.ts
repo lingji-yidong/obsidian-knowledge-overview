@@ -49,24 +49,7 @@ export default class KnowledgePlugin extends Plugin {
     const uiText = getUiText(this.settings.language);
 
     this.registerLocalizedCommands(uiText);
-
-    this.generateRibbonIcon = this.addRibbonIcon(
-      "book-open",
-      uiText.generateKnowledge,
-      () => {
-        new InputModal(this.app, this).open();
-      },
-    );
-    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
-
-    this.resumeRibbonIcon = this.addRibbonIcon(
-      "refresh-cw",
-      uiText.resumeFailedChapters,
-      () => {
-        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
-      },
-    );
-    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.createRibbonIcons(uiText);
 
     this.addSettingTab(new SettingTab(this.app, this));
   }
@@ -96,8 +79,7 @@ export default class KnowledgePlugin extends Plugin {
   refreshLocalizedUi(): void {
     const uiText = getUiText(this.settings.language);
     this.registerLocalizedCommands(uiText);
-    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
-    this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
+    this.createRibbonIcons(uiText);
   }
 
   private registerLocalizedCommands(uiText: UiText): void {
@@ -125,6 +107,34 @@ export default class KnowledgePlugin extends Plugin {
     });
 
     this.commandsRegistered = true;
+  }
+
+  private createRibbonIcons(uiText: UiText): void {
+    this.generateRibbonIcon?.detach();
+    this.resumeRibbonIcon?.detach();
+
+    this.generateRibbonIcon = this.addRibbonIcon(
+      "book-open",
+      uiText.generateKnowledge,
+      () => {
+        new InputModal(this.app, this).open();
+      },
+    );
+    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
+
+    this.resumeRibbonIcon = this.addRibbonIcon(
+      "refresh-cw",
+      uiText.resumeFailedChapters,
+      () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      },
+    );
+    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.updateRibbonLabel(
+      this.resumeRibbonIcon,
+      uiText.resumeFailedChapters,
+    );
   }
 
   private updateRibbonLabel(
