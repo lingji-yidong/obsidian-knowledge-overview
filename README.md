@@ -89,15 +89,18 @@ Signal Processing/
 
 ## Settings
 
-- `API Key`: API key for your provider.
-- `API Base URL`: OpenAI-compatible API endpoint. Default:
+- `API key`: API key for your provider.
+- `API base URL`: OpenAI-compatible API endpoint. Default:
   `https://generativelanguage.googleapis.com/v1beta/openai`.
-- `Outline Model`: model used for outline generation. Default:
-  `gemini-2.5-flash`.
-- `Chapter Model`: model used for chapter notes. Default:
-  `gemini-2.5-flash`.
+- `Outline model`: model used for outline generation. Default:
+  `gemini-3.5-flash`.
+- `Chapter model`: model used for chapter notes. Default:
+  `gemini-3.5-flash`.
+- `Max completion tokens`: optional `max_completion_tokens` limit for
+  Chat Completions output. Leave empty to omit the field; set a larger number
+  if your provider truncates long chapters.
 - `Concurrency`: manual course-level concurrency, default `1`.
-- `Chapter Concurrency`: manual chapter-generation concurrency, default `1`.
+- `Chapter concurrency`: manual chapter-generation concurrency, default `1`.
 - `Language`: target output language.
 
 The default settings favor stability on free or rate-limited providers. Keep
@@ -123,8 +126,26 @@ Polish, Turkish, and Russian.
 
 The plugin calls the `/chat/completions` endpoint and should work with Google
 Gemini's OpenAI-compatible endpoint, OpenAI, and other OpenAI-compatible
-providers. Provider quality, latency, context limits, and rate limits directly
-affect generation quality and stability.
+providers. The API base URL is normalized, so values with or without trailing
+slashes, `/v1`, or `/chat/completions` are handled. If you enter only a host
+with no path, the plugin uses the common `/v1/chat/completions` convention.
+Provider quality, latency, context limits, and rate limits directly affect
+generation quality and stability.
+
+Common API base URL examples:
+
+| Provider | API base URL | Example model |
+| --- | --- | --- |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-3.5-flash` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-5.5` |
+| Anthropic Claude | `https://api.anthropic.com/v1` | `claude-opus-4-7` |
+| DeepSeek | `https://api.deepseek.com` | `deepseek-v4-pro` |
+
+The plugin appends `/chat/completions` automatically. You can paste either the
+base URL above or a full `/chat/completions` URL; both forms are normalized.
+For best note quality, prefer mid-sized or stronger models. In practice,
+Gemini Flash works well, while lite/small models often produce notes that are
+too short.
 
 ## Privacy and Security
 

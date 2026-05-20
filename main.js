@@ -29,8 +29,9 @@ var DEFAULT_SETTINGS = {
   apiKey: "",
   language: "en",
   apiBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-  modelOutline: "gemini-2.5-flash",
-  modelChapter: "gemini-2.5-flash",
+  modelOutline: "gemini-3.5-flash",
+  modelChapter: "gemini-3.5-flash",
+  maxCompletionTokens: null,
   concurrency: 1,
   chapterConcurrency: 1
 };
@@ -171,6 +172,29 @@ function clampInteger(value, min, max) {
   }
   return Math.min(Math.max(Math.floor(value), min), max);
 }
+function parseOptionalPositiveInteger(value) {
+  if (value === null || value === void 0 || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+function buildChatCompletionsUrl(apiBaseUrl) {
+  const trimmed = apiBaseUrl.trim();
+  const fallback = DEFAULT_SETTINGS.apiBaseUrl;
+  const withoutTrailingSlash = (trimmed || fallback).replace(/\/+$/, "");
+  const withoutEndpoint = withoutTrailingSlash.replace(
+    /(?:\/chat)?\/completions$/i,
+    ""
+  );
+  const normalizedSlashes = withoutEndpoint.replace(/([^:]\/)\/+/g, "$1").replace(/\/+$/, "");
+  const hasPath = /^https?:\/\/[^/]+\/.+/i.test(normalizedSlashes);
+  const baseUrl = hasPath ? normalizedSlashes : `${normalizedSlashes}/v1`;
+  return `${baseUrl}/chat/completions`;
+}
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -192,11 +216,41 @@ function isChatCompletionResponse(value) {
   if (!Array.isArray(choices) || choices.length === 0) {
     return false;
   }
-  const firstChoice = choices[0];
-  if (!firstChoice.message || typeof firstChoice.message !== "object") {
-    return false;
+  return typeof choices[0] === "object" && choices[0] !== null;
+}
+function extractTextContent(content) {
+  if (typeof content === "string") {
+    return content;
   }
-  return typeof firstChoice.message.content === "string";
+  if (!Array.isArray(content)) {
+    return null;
+  }
+  const parts = content.map((part) => {
+    if (typeof part === "string") {
+      return part;
+    }
+    if (!part || typeof part !== "object") {
+      return "";
+    }
+    const maybeText = part;
+    if (typeof maybeText.text === "string") {
+      return maybeText.text;
+    }
+    if (typeof maybeText.content === "string") {
+      return maybeText.content;
+    }
+    return "";
+  }).join("");
+  return parts || null;
+}
+function extractChatCompletionContent(data) {
+  var _a;
+  const firstChoice = data.choices[0];
+  const messageContent = extractTextContent((_a = firstChoice.message) == null ? void 0 : _a.content);
+  if (messageContent !== null) {
+    return messageContent;
+  }
+  return extractTextContent(firstChoice.text);
 }
 function errorToMessage(error) {
   return error instanceof Error ? error.message : String(error);
@@ -317,6 +371,9 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       MIN_CONCURRENCY,
       MAX_CHAPTER_CONCURRENCY
     );
+    this.settings.maxCompletionTokens = parseOptionalPositiveInteger(
+      this.settings.maxCompletionTokens
+    );
   }
   async saveSettings() {
     await this.saveData(this.settings);
@@ -398,17 +455,21 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     throw lastError;
   }
   async callLLMOnce(prompt, model) {
+    const body = {
+      model,
+      messages: [{ role: "user", content: prompt }]
+    };
+    if (this.settings.maxCompletionTokens !== null) {
+      body.max_completion_tokens = this.settings.maxCompletionTokens;
+    }
     const res = await (0, import_obsidian.requestUrl)({
-      url: `${this.settings.apiBaseUrl}/chat/completions`,
+      url: buildChatCompletionsUrl(this.settings.apiBaseUrl),
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.settings.apiKey}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }]
-      })
+      body: JSON.stringify(body)
     });
     if (res.status < 200 || res.status >= 300) {
       throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
@@ -417,7 +478,11 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     if (!isChatCompletionResponse(data)) {
       throw new Error("API response did not include a message content");
     }
-    return data.choices[0].message.content;
+    const content = extractChatCompletionContent(data);
+    if (content === null) {
+      throw new Error("API response did not include a message content");
+    }
+    return content;
   }
   async fetchOutline(courseName) {
     try {
@@ -802,14 +867,13 @@ var SettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
-    new import_obsidian.Setting(containerEl).setName("Configuration").setHeading();
-    new import_obsidian.Setting(containerEl).setName("API Key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
+    new import_obsidian.Setting(containerEl).setName("API key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
       (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
         this.plugin.settings.apiKey = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(containerEl).setName("API Base URL").setDesc(
+    new import_obsidian.Setting(containerEl).setName("API base URL").setDesc(
       `OpenAI-compatible API base URL. Default: ${DEFAULT_SETTINGS.apiBaseUrl}`
     ).addText(
       (text) => text.setValue(this.plugin.settings.apiBaseUrl).onChange(async (value) => {
@@ -817,18 +881,31 @@ var SettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(containerEl).setName("Outline Model").setDesc("LLM model for generating course outlines").addText(
+    new import_obsidian.Setting(containerEl).setName("Outline model").setDesc("LLM model for generating course outlines").addText(
       (text) => text.setValue(this.plugin.settings.modelOutline).onChange(async (value) => {
         this.plugin.settings.modelOutline = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(containerEl).setName("Chapter Model").setDesc("LLM model for generating chapter details").addText(
+    new import_obsidian.Setting(containerEl).setName("Chapter model").setDesc("LLM model for generating chapter details").addText(
       (text) => text.setValue(this.plugin.settings.modelChapter).onChange(async (value) => {
         this.plugin.settings.modelChapter = value;
         await this.plugin.saveSettings();
       })
     );
+    new import_obsidian.Setting(containerEl).setName("Max completion tokens").setDesc(
+      "Optional output token limit passed as max_completion_tokens. Leave empty to omit it; set a larger value if your provider truncates long chapters."
+    ).addText((text) => {
+      text.inputEl.type = "number";
+      text.inputEl.min = "1";
+      text.inputEl.step = "1";
+      return text.setPlaceholder("None").setValue(
+        this.plugin.settings.maxCompletionTokens === null ? "" : String(this.plugin.settings.maxCompletionTokens)
+      ).onChange(async (value) => {
+        this.plugin.settings.maxCompletionTokens = parseOptionalPositiveInteger(value);
+        await this.plugin.saveSettings();
+      });
+    });
     new import_obsidian.Setting(containerEl).setName("Concurrency").setDesc(
       "Manual concurrency for course-level API calls. Default is 1 for stability on free or rate-limited providers."
     ).addText((text) => {
@@ -845,7 +922,7 @@ var SettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Chapter Concurrency").setDesc(
+    new import_obsidian.Setting(containerEl).setName("Chapter concurrency").setDesc(
       "Manual concurrency for chapter generation. Default is 1; increase only if your provider is stable under parallel requests."
     ).addText((text) => {
       text.inputEl.type = "number";

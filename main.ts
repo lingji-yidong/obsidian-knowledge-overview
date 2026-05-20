@@ -20,6 +20,7 @@ interface MySettings {
   apiBaseUrl: string;
   modelOutline: string;
   modelChapter: string;
+  maxCompletionTokens: number | null;
   concurrency: number;
   chapterConcurrency: number;
 }
@@ -28,8 +29,9 @@ const DEFAULT_SETTINGS: MySettings = {
   apiKey: "",
   language: "en",
   apiBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-  modelOutline: "gemini-2.5-flash",
-  modelChapter: "gemini-2.5-flash",
+  modelOutline: "gemini-3.5-flash",
+  modelChapter: "gemini-3.5-flash",
+  maxCompletionTokens: null,
   concurrency: 1,
   chapterConcurrency: 1,
 };
@@ -199,6 +201,36 @@ function clampInteger(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.floor(value), min), max);
 }
 
+function parseOptionalPositiveInteger(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+
+  return Math.floor(parsed);
+}
+
+function buildChatCompletionsUrl(apiBaseUrl: string): string {
+  const trimmed = apiBaseUrl.trim();
+  const fallback = DEFAULT_SETTINGS.apiBaseUrl;
+  const withoutTrailingSlash = (trimmed || fallback).replace(/\/+$/, "");
+  const withoutEndpoint = withoutTrailingSlash.replace(
+    /(?:\/chat)?\/completions$/i,
+    "",
+  );
+  const normalizedSlashes = withoutEndpoint
+    .replace(/([^:]\/)\/+/g, "$1")
+    .replace(/\/+$/, "");
+  const hasPath = /^https?:\/\/[^/]+\/.+/i.test(normalizedSlashes);
+  const baseUrl = hasPath ? normalizedSlashes : `${normalizedSlashes}/v1`;
+
+  return `${baseUrl}/chat/completions`;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -217,9 +249,10 @@ interface ChapterGenerationResult {
 
 interface ChatCompletionResponse {
   choices: Array<{
-    message: {
-      content: string;
+    message?: {
+      content?: unknown;
     };
+    text?: unknown;
   }>;
 }
 
@@ -243,12 +276,52 @@ function isChatCompletionResponse(value: unknown): value is ChatCompletionRespon
     return false;
   }
 
-  const firstChoice = choices[0] as { message?: unknown };
-  if (!firstChoice.message || typeof firstChoice.message !== "object") {
-    return false;
+  return typeof choices[0] === "object" && choices[0] !== null;
+}
+
+function extractTextContent(content: unknown): string | null {
+  if (typeof content === "string") {
+    return content;
   }
 
-  return typeof (firstChoice.message as { content?: unknown }).content === "string";
+  if (!Array.isArray(content)) {
+    return null;
+  }
+
+  const parts = content
+    .map((part) => {
+      if (typeof part === "string") {
+        return part;
+      }
+
+      if (!part || typeof part !== "object") {
+        return "";
+      }
+
+      const maybeText = part as { text?: unknown; content?: unknown };
+      if (typeof maybeText.text === "string") {
+        return maybeText.text;
+      }
+
+      if (typeof maybeText.content === "string") {
+        return maybeText.content;
+      }
+
+      return "";
+    })
+    .join("");
+
+  return parts || null;
+}
+
+function extractChatCompletionContent(data: ChatCompletionResponse): string | null {
+  const firstChoice = data.choices[0];
+  const messageContent = extractTextContent(firstChoice.message?.content);
+  if (messageContent !== null) {
+    return messageContent;
+  }
+
+  return extractTextContent(firstChoice.text);
 }
 
 function errorToMessage(error: unknown): string {
@@ -409,6 +482,9 @@ export default class KnowledgePlugin extends Plugin {
       MIN_CONCURRENCY,
       MAX_CHAPTER_CONCURRENCY,
     );
+    this.settings.maxCompletionTokens = parseOptionalPositiveInteger(
+      this.settings.maxCompletionTokens,
+    );
   }
 
   async saveSettings() {
@@ -506,17 +582,27 @@ export default class KnowledgePlugin extends Plugin {
   }
 
   async callLLMOnce(prompt: string, model: string): Promise<string> {
+    const body: {
+      model: string;
+      messages: Array<{ role: "user"; content: string }>;
+      max_completion_tokens?: number;
+    } = {
+      model: model,
+      messages: [{ role: "user", content: prompt }],
+    };
+
+    if (this.settings.maxCompletionTokens !== null) {
+      body.max_completion_tokens = this.settings.maxCompletionTokens;
+    }
+
     const res = await requestUrl({
-      url: `${this.settings.apiBaseUrl}/chat/completions`,
+      url: buildChatCompletionsUrl(this.settings.apiBaseUrl),
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.settings.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: JSON.stringify(body),
     });
 
     if (res.status < 200 || res.status >= 300) {
@@ -528,7 +614,12 @@ export default class KnowledgePlugin extends Plugin {
       throw new Error("API response did not include a message content");
     }
 
-    return data.choices[0].message.content;
+    const content = extractChatCompletionContent(data);
+    if (content === null) {
+      throw new Error("API response did not include a message content");
+    }
+
+    return content;
   }
 
   async fetchOutline(courseName: string): Promise<string> {
@@ -995,10 +1086,8 @@ class SettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass("knowledge-settings");
 
-    new Setting(containerEl).setName("Configuration").setHeading();
-
     new Setting(containerEl)
-      .setName("API Key")
+      .setName("API key")
       .setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.")
       .addText((text) =>
         text
@@ -1011,7 +1100,7 @@ class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("API Base URL")
+      .setName("API base URL")
       .setDesc(
         `OpenAI-compatible API base URL. Default: ${DEFAULT_SETTINGS.apiBaseUrl}`,
       )
@@ -1025,7 +1114,7 @@ class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Outline Model")
+      .setName("Outline model")
       .setDesc("LLM model for generating course outlines")
       .addText((text) =>
         text
@@ -1037,7 +1126,7 @@ class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Chapter Model")
+      .setName("Chapter model")
       .setDesc("LLM model for generating chapter details")
       .addText((text) =>
         text
@@ -1047,6 +1136,30 @@ class SettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+
+    new Setting(containerEl)
+      .setName("Max completion tokens")
+      .setDesc(
+        "Optional output token limit passed as max_completion_tokens. Leave empty to omit it; set a larger value if your provider truncates long chapters.",
+      )
+      .addText((text) => {
+        text.inputEl.type = "number";
+        text.inputEl.min = "1";
+        text.inputEl.step = "1";
+
+        return text
+          .setPlaceholder("None")
+          .setValue(
+            this.plugin.settings.maxCompletionTokens === null
+              ? ""
+              : String(this.plugin.settings.maxCompletionTokens),
+          )
+          .onChange(async (value) => {
+            this.plugin.settings.maxCompletionTokens =
+              parseOptionalPositiveInteger(value);
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
       .setName("Concurrency")
@@ -1073,7 +1186,7 @@ class SettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Chapter Concurrency")
+      .setName("Chapter concurrency")
       .setDesc(
         "Manual concurrency for chapter generation. Default is 1; increase only if your provider is stable under parallel requests.",
       )

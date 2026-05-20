@@ -50,6 +50,29 @@
   margin-bottom: 1rem;
 }
 
+.knowledge-settings .setting-item-control,
+.knowledge-settings .setting-item-control input,
+.knowledge-settings .setting-item-control select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.knowledge-settings .setting-item-control input {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .knowledge-settings .setting-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .knowledge-settings .setting-item-info,
+  .knowledge-settings .setting-item-control {
+    width: 100%;
+  }
+}
+
 .knowledge-progress-status {
   display: flex;
   align-items: center;
