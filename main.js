@@ -826,6 +826,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     if (!ribbonIcon) {
       return;
     }
+    (0, import_obsidian4.setTooltip)(ribbonIcon, label, { placement: "right" });
     ribbonIcon.setAttr("aria-label", label);
     ribbonIcon.setAttr("title", label);
   }

@@ -5,6 +5,7 @@ import {
   TFile,
   TFolder,
   normalizePath,
+  setTooltip,
 } from "obsidian";
 import { ApiError, callChatCompletion, isRetryableStatus } from "./api";
 import { getHeaderText, getUiText } from "./i18n";
@@ -111,11 +112,15 @@ export default class KnowledgePlugin extends Plugin {
     this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
   }
 
-  private updateRibbonLabel(ribbonIcon: HTMLElement | undefined, label: string): void {
+  private updateRibbonLabel(
+    ribbonIcon: HTMLElement | undefined,
+    label: string,
+  ): void {
     if (!ribbonIcon) {
       return;
     }
 
+    setTooltip(ribbonIcon, label, { placement: "right" });
     ribbonIcon.setAttr("aria-label", label);
     ribbonIcon.setAttr("title", label);
   }
