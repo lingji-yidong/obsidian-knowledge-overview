@@ -21,10 +21,17 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => KnowledgePlugin
+  default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
+
+// src/plugin.ts
+var import_obsidian4 = require("obsidian");
+
+// src/api.ts
 var import_obsidian = require("obsidian");
+
+// src/settings.ts
 var DEFAULT_SETTINGS = {
   apiKey: "",
   language: "en",
@@ -40,6 +47,107 @@ var MAX_COURSE_CONCURRENCY = 10;
 var MAX_CHAPTER_CONCURRENCY = 20;
 var MAX_API_RETRIES = 2;
 var RETRY_BASE_DELAY_MS = 1500;
+
+// src/api.ts
+var ApiError = class extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+};
+function isRetryableStatus(status) {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+function buildChatCompletionsUrl(apiBaseUrl) {
+  const trimmed = apiBaseUrl.trim();
+  const fallback = DEFAULT_SETTINGS.apiBaseUrl;
+  const withoutTrailingSlash = (trimmed || fallback).replace(/\/+$/, "");
+  const withoutEndpoint = withoutTrailingSlash.replace(
+    /(?:\/chat)?\/completions$/i,
+    ""
+  );
+  const normalizedSlashes = withoutEndpoint.replace(/([^:]\/)\/+/g, "$1").replace(/\/+$/, "");
+  const hasPath = /^https?:\/\/[^/]+\/.+/i.test(normalizedSlashes);
+  const baseUrl = hasPath ? normalizedSlashes : `${normalizedSlashes}/v1`;
+  return `${baseUrl}/chat/completions`;
+}
+function isChatCompletionResponse(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const choices = value.choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    return false;
+  }
+  return typeof choices[0] === "object" && choices[0] !== null;
+}
+function extractTextContent(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return null;
+  }
+  const parts = content.map((part) => {
+    if (typeof part === "string") {
+      return part;
+    }
+    if (!part || typeof part !== "object") {
+      return "";
+    }
+    const maybeText = part;
+    if (typeof maybeText.text === "string") {
+      return maybeText.text;
+    }
+    if (typeof maybeText.content === "string") {
+      return maybeText.content;
+    }
+    return "";
+  }).join("");
+  return parts || null;
+}
+function extractChatCompletionContent(data) {
+  var _a;
+  const firstChoice = data.choices[0];
+  const messageContent = extractTextContent((_a = firstChoice.message) == null ? void 0 : _a.content);
+  if (messageContent !== null) {
+    return messageContent;
+  }
+  return extractTextContent(firstChoice.text);
+}
+async function callChatCompletion(apiKey, apiBaseUrl, model, prompt, maxCompletionTokens) {
+  const body = {
+    model,
+    messages: [{ role: "user", content: prompt }]
+  };
+  if (maxCompletionTokens !== null) {
+    body.max_completion_tokens = maxCompletionTokens;
+  }
+  const res = await (0, import_obsidian.requestUrl)({
+    url: buildChatCompletionsUrl(apiBaseUrl),
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (res.status < 200 || res.status >= 300) {
+    throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
+  }
+  const data = res.json;
+  if (!isChatCompletionResponse(data)) {
+    throw new Error("API response did not include a message content");
+  }
+  const content = extractChatCompletionContent(data);
+  if (content === null) {
+    throw new Error("API response did not include a message content");
+  }
+  return content;
+}
+
+// src/i18n.ts
 var LANGUAGE_OPTIONS = {
   en: "English",
   zh: "\u7B80\u4F53\u4E2D\u6587",
@@ -59,14 +167,122 @@ var LANGUAGE_OPTIONS = {
   pt: "Portugu\xEAs",
   nl: "Nederlands",
   sv: "Svenska",
+  fi: "Suomi",
   pl: "Polski",
   tr: "T\xFCrk\xE7e",
   ru: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439"
+};
+var HEADER_TEXT = {
+  en: {
+    outlineTitle: "Outline",
+    generatedAt: "Generated at",
+    chapterNumber: "Chapter",
+    generated: "Auto-generated review and interview notes. Edit freely."
+  },
+  zh: {
+    outlineTitle: "\u5927\u7DB1",
+    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
+    chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
+    generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
+  },
+  zh_tw: {
+    outlineTitle: "\u5927\u7DB1",
+    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
+    chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
+    generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
+  },
+  fi: {
+    outlineTitle: "J\xE4sennys",
+    generatedAt: "Luotu",
+    chapterNumber: "Luku",
+    generated: "Automaattisesti luodut kertaus- ja haastattelumuistiinpanot. Muokkaa vapaasti."
+  }
 };
 function getLanguageLabel(language) {
   var _a;
   return (_a = LANGUAGE_OPTIONS[language]) != null ? _a : language;
 }
+function getHeaderText(language) {
+  var _a;
+  return (_a = HEADER_TEXT[language]) != null ? _a : HEADER_TEXT.en;
+}
+
+// src/modals.ts
+var import_obsidian2 = require("obsidian");
+var InputModal = class extends import_obsidian2.Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("knowledge-input-modal");
+    const input = contentEl.createEl("input", {
+      type: "text",
+      placeholder: "Enter subject (e.g. Signal Processing)"
+    });
+    const button = contentEl.createEl("button", {
+      text: "Generate"
+    });
+    button.onclick = async () => {
+      const subject = input.value.trim();
+      if (!subject) {
+        new import_obsidian2.Notice("Please enter a subject name");
+        return;
+      }
+      this.close();
+      void this.plugin.generate(subject);
+    };
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        button.click();
+      }
+    });
+  }
+};
+var ResumeFailedModal = class extends import_obsidian2.Modal {
+  constructor(app, plugin, initialCourseName) {
+    super(app);
+    this.plugin = plugin;
+    this.initialCourseName = initialCourseName;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("knowledge-input-modal");
+    contentEl.createEl("p", {
+      cls: "knowledge-modal-help",
+      text: "Resume chapters listed in Failed_Chapters.md for a subject folder."
+    });
+    const input = contentEl.createEl("input", {
+      type: "text",
+      placeholder: "Subject folder (e.g. Signal Processing)",
+      value: this.initialCourseName
+    });
+    const button = contentEl.createEl("button", {
+      text: "Resume failed chapters"
+    });
+    button.onclick = async () => {
+      const subject = input.value.trim();
+      if (!subject) {
+        new import_obsidian2.Notice("Please enter a subject folder name");
+        return;
+      }
+      this.close();
+      void this.plugin.resumeFailedChapters(subject);
+    };
+    input.focus();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        button.click();
+      }
+    });
+  }
+};
+
+// src/prompts.ts
 function buildOutlinePrompt(courseName, language) {
   const targetLanguage = getLanguageLabel(language);
   return `
@@ -142,30 +358,11 @@ $$
 13. \u4E0D\u8981\u5728\u6B63\u6587\u4E2D\u63CF\u8FF0\u4F7F\u7528\u8005\u7684\u500B\u4EBA\u80CC\u666F\u6216\u6E96\u5099\u6D41\u7A0B\uFF1B\u53EA\u8F38\u51FA\u7AE0\u7BC0\u77E5\u8B58\u672C\u8EAB
 `;
 }
-var HEADER_TEXT = {
-  en: {
-    outlineTitle: "Outline",
-    generatedAt: "Generated at",
-    chapterNumber: "Chapter",
-    generated: "Auto-generated review and interview notes. Edit freely."
-  },
-  zh: {
-    outlineTitle: "\u5927\u7DB1",
-    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
-    chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
-    generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
-  },
-  zh_tw: {
-    outlineTitle: "\u5927\u7DB1",
-    generatedAt: "\u81EA\u52D5\u751F\u6210\u6642\u9593",
-    chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
-    generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
-  }
-};
-function getHeaderText(language) {
-  var _a;
-  return (_a = HEADER_TEXT[language]) != null ? _a : HEADER_TEXT.en;
-}
+
+// src/settings-tab.ts
+var import_obsidian3 = require("obsidian");
+
+// src/utils.ts
 function clampInteger(value, min, max) {
   if (!Number.isFinite(value)) {
     return min;
@@ -182,81 +379,14 @@ function parseOptionalPositiveInteger(value) {
   }
   return Math.floor(parsed);
 }
-function buildChatCompletionsUrl(apiBaseUrl) {
-  const trimmed = apiBaseUrl.trim();
-  const fallback = DEFAULT_SETTINGS.apiBaseUrl;
-  const withoutTrailingSlash = (trimmed || fallback).replace(/\/+$/, "");
-  const withoutEndpoint = withoutTrailingSlash.replace(
-    /(?:\/chat)?\/completions$/i,
-    ""
-  );
-  const normalizedSlashes = withoutEndpoint.replace(/([^:]\/)\/+/g, "$1").replace(/\/+$/, "");
-  const hasPath = /^https?:\/\/[^/]+\/.+/i.test(normalizedSlashes);
-  const baseUrl = hasPath ? normalizedSlashes : `${normalizedSlashes}/v1`;
-  return `${baseUrl}/chat/completions`;
-}
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-function isRetryableStatus(status) {
-  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
-}
-var ApiError = class extends Error {
-  constructor(message, status) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-};
-function isChatCompletionResponse(value) {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const choices = value.choices;
-  if (!Array.isArray(choices) || choices.length === 0) {
-    return false;
-  }
-  return typeof choices[0] === "object" && choices[0] !== null;
-}
-function extractTextContent(content) {
-  if (typeof content === "string") {
-    return content;
-  }
-  if (!Array.isArray(content)) {
-    return null;
-  }
-  const parts = content.map((part) => {
-    if (typeof part === "string") {
-      return part;
-    }
-    if (!part || typeof part !== "object") {
-      return "";
-    }
-    const maybeText = part;
-    if (typeof maybeText.text === "string") {
-      return maybeText.text;
-    }
-    if (typeof maybeText.content === "string") {
-      return maybeText.content;
-    }
-    return "";
-  }).join("");
-  return parts || null;
-}
-function extractChatCompletionContent(data) {
-  var _a;
-  const firstChoice = data.choices[0];
-  const messageContent = extractTextContent((_a = firstChoice.message) == null ? void 0 : _a.content);
-  if (messageContent !== null) {
-    return messageContent;
-  }
-  return extractTextContent(firstChoice.text);
 }
 function errorToMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function slugifyTitle(title) {
-  let safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
+  const safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
   return safe.replace(/\s+/g, "_") || "chapter";
 }
 function parseChapterTitles(outline) {
@@ -270,8 +400,7 @@ function parseChapterTitles(outline) {
     const match = trimmed.match(chapterPattern);
     if (match) {
       const chapterNum = match[1];
-      let title = match[2].trim();
-      title = title.replace(/[：:]+$/, "").trim();
+      const title = match[2].trim().replace(/[：:]+$/, "").trim();
       if (title) {
         chapters.push([chapterNum, title]);
       }
@@ -322,7 +451,102 @@ var Semaphore = class {
     }
   }
 };
-var KnowledgePlugin = class extends import_obsidian.Plugin {
+
+// src/settings-tab.ts
+var SettingTab = class extends import_obsidian3.PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.addClass("knowledge-settings");
+    new import_obsidian3.Setting(containerEl).setName("API key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
+      (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
+        this.plugin.settings.apiKey = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("API base URL").setDesc(
+      `OpenAI-compatible API base URL. Default: ${DEFAULT_SETTINGS.apiBaseUrl}`
+    ).addText(
+      (text) => text.setValue(this.plugin.settings.apiBaseUrl).onChange(async (value) => {
+        this.plugin.settings.apiBaseUrl = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("Outline model").setDesc("LLM model for generating course outlines").addText(
+      (text) => text.setValue(this.plugin.settings.modelOutline).onChange(async (value) => {
+        this.plugin.settings.modelOutline = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("Chapter model").setDesc("LLM model for generating chapter details").addText(
+      (text) => text.setValue(this.plugin.settings.modelChapter).onChange(async (value) => {
+        this.plugin.settings.modelChapter = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian3.Setting(containerEl).setName("Max completion tokens").setDesc(
+      "Optional output token limit passed as max_completion_tokens. Leave empty to omit it; set a larger value if your provider truncates long chapters."
+    ).addText((text) => {
+      text.inputEl.type = "number";
+      text.inputEl.min = "1";
+      text.inputEl.step = "1";
+      return text.setPlaceholder("None").setValue(
+        this.plugin.settings.maxCompletionTokens === null ? "" : String(this.plugin.settings.maxCompletionTokens)
+      ).onChange(async (value) => {
+        this.plugin.settings.maxCompletionTokens = parseOptionalPositiveInteger(value);
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian3.Setting(containerEl).setName("Concurrency").setDesc(
+      "Manual concurrency for course-level API calls. Default is 1 for stability on free or rate-limited providers."
+    ).addText((text) => {
+      text.inputEl.type = "number";
+      text.inputEl.min = String(MIN_CONCURRENCY);
+      text.inputEl.max = String(MAX_COURSE_CONCURRENCY);
+      text.inputEl.step = "1";
+      return text.setPlaceholder(String(DEFAULT_SETTINGS.concurrency)).setValue(String(this.plugin.settings.concurrency)).onChange(async (value) => {
+        this.plugin.settings.concurrency = clampInteger(
+          Number(value),
+          MIN_CONCURRENCY,
+          MAX_COURSE_CONCURRENCY
+        );
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian3.Setting(containerEl).setName("Chapter concurrency").setDesc(
+      "Manual concurrency for chapter generation. Default is 1; increase only if your provider is stable under parallel requests."
+    ).addText((text) => {
+      text.inputEl.type = "number";
+      text.inputEl.min = String(MIN_CONCURRENCY);
+      text.inputEl.max = String(MAX_CHAPTER_CONCURRENCY);
+      text.inputEl.step = "1";
+      return text.setPlaceholder(String(DEFAULT_SETTINGS.chapterConcurrency)).setValue(String(this.plugin.settings.chapterConcurrency)).onChange(async (value) => {
+        this.plugin.settings.chapterConcurrency = clampInteger(
+          Number(value),
+          MIN_CONCURRENCY,
+          MAX_CHAPTER_CONCURRENCY
+        );
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian3.Setting(containerEl).setName("Language").setDesc("Output language preference").addDropdown((dropdown) => {
+      Object.entries(LANGUAGE_OPTIONS).forEach(([value, label]) => {
+        dropdown.addOption(value, label);
+      });
+      return dropdown.setValue(this.plugin.settings.language).onChange(async (v) => {
+        this.plugin.settings.language = v;
+        await this.plugin.saveSettings();
+      });
+    });
+  }
+};
+
+// src/plugin.ts
+var KnowledgePlugin = class extends import_obsidian4.Plugin {
   async onload() {
     await this.loadSettings();
     this.setupProgressStatus();
@@ -386,7 +610,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
   setupProgressStatus() {
     this.progressStatusEl = this.addStatusBarItem();
     this.progressStatusEl.addClass("knowledge-progress-status");
-    if (import_obsidian.Platform.isMobile) {
+    if (import_obsidian4.Platform.isMobile) {
       this.progressStatusEl.addClass("knowledge-progress-mobile");
     }
     this.progressStatusEl.empty();
@@ -412,7 +636,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       });
     }
     if (!this.progressNotice) {
-      this.progressNotice = new import_obsidian.Notice(message, 0);
+      this.progressNotice = new import_obsidian4.Notice(message, 0);
       this.progressNotice.containerEl.addClass("knowledge-progress-notice");
     } else {
       this.progressNotice.setMessage(message);
@@ -433,12 +657,17 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
     this.showProgress(label, 100);
     window.setTimeout(() => this.hideProgress(), 5e3);
   }
-  /* ================= API CALLS ================= */
   async callLLM(prompt, model) {
     let lastError;
     for (let attempt = 0; attempt <= MAX_API_RETRIES; attempt++) {
       try {
-        return await this.callLLMOnce(prompt, model);
+        return await callChatCompletion(
+          this.settings.apiKey,
+          this.settings.apiBaseUrl,
+          model,
+          prompt,
+          this.settings.maxCompletionTokens
+        );
       } catch (error) {
         lastError = error;
         const isLastAttempt = attempt === MAX_API_RETRIES;
@@ -453,36 +682,6 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       }
     }
     throw lastError;
-  }
-  async callLLMOnce(prompt, model) {
-    const body = {
-      model,
-      messages: [{ role: "user", content: prompt }]
-    };
-    if (this.settings.maxCompletionTokens !== null) {
-      body.max_completion_tokens = this.settings.maxCompletionTokens;
-    }
-    const res = await (0, import_obsidian.requestUrl)({
-      url: buildChatCompletionsUrl(this.settings.apiBaseUrl),
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.settings.apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    });
-    if (res.status < 200 || res.status >= 300) {
-      throw new ApiError(`API Error: ${res.status} - ${res.text}`, res.status);
-    }
-    const data = res.json;
-    if (!isChatCompletionResponse(data)) {
-      throw new Error("API response did not include a message content");
-    }
-    const content = extractChatCompletionContent(data);
-    if (content === null) {
-      throw new Error("API response did not include a message content");
-    }
-    return content;
   }
   async fetchOutline(courseName) {
     try {
@@ -506,7 +705,6 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       throw error;
     }
   }
-  /* ================= CORE GENERATION LOGIC ================= */
   async generateChapterContent(courseFolder, chapterInfo, courseName, sem, onComplete) {
     const [chapterNum, title] = chapterInfo;
     return await sem.run(async () => {
@@ -527,16 +725,16 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
 
 `;
         const fullContent = header + chapterContent;
-        const filePath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/${fileName}`);
+        const filePath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/${fileName}`);
         const existing = this.app.vault.getAbstractFileByPath(filePath);
-        if (existing instanceof import_obsidian.TFile) {
+        if (existing instanceof import_obsidian4.TFile) {
           await this.app.vault.modify(existing, fullContent);
         } else if (existing) {
           throw new Error(`Path "${filePath}" exists and is not a file`);
         } else {
           await this.app.vault.create(filePath, fullContent);
         }
-        new import_obsidian.Notice(`\u2713 ${fileName}`);
+        new import_obsidian4.Notice(`\u2713 ${fileName}`);
         result = {
           chapterNum,
           title,
@@ -545,7 +743,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         };
       } catch (error) {
         const errorMsg = errorToMessage(error);
-        new import_obsidian.Notice(
+        new import_obsidian4.Notice(
           `\u2717 Error generating chapter ${chapterNum}: ${errorMsg}`,
           5e3
         );
@@ -585,16 +783,16 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       }, []),
       ""
     ].join("\n");
-    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const reportPath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
     const existing = this.app.vault.getAbstractFileByPath(reportPath);
-    if (existing instanceof import_obsidian.TFile) {
+    if (existing instanceof import_obsidian4.TFile) {
       await this.app.vault.modify(existing, content);
     } else {
       await this.app.vault.create(reportPath, content);
     }
   }
   async clearFailureReport(courseFolder, courseName) {
-    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const reportPath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
     const existing = this.app.vault.getAbstractFileByPath(reportPath);
     const content = [
       `# ${courseName} Failed Chapters`,
@@ -604,39 +802,39 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       "All previously failed chapters were generated successfully.",
       ""
     ].join("\n");
-    if (existing instanceof import_obsidian.TFile) {
+    if (existing instanceof import_obsidian4.TFile) {
       await this.app.vault.modify(existing, content);
     }
   }
   async resumeFailedChapters(courseName) {
     if (!this.settings.apiKey) {
-      new import_obsidian.Notice("\u274C API Key not set! Please configure it in settings.");
+      new import_obsidian4.Notice("\u274C API Key not set! Please configure it in settings.");
       return;
     }
-    const folderPath = (0, import_obsidian.normalizePath)(courseName.trim());
+    const folderPath = (0, import_obsidian4.normalizePath)(courseName.trim());
     if (!folderPath) {
-      new import_obsidian.Notice("Please enter a subject folder name");
+      new import_obsidian4.Notice("Please enter a subject folder name");
       return;
     }
     const courseFolder = this.app.vault.getAbstractFileByPath(folderPath);
-    if (!(courseFolder instanceof import_obsidian.TFolder)) {
-      new import_obsidian.Notice(`\u274C Folder not found: ${folderPath}`, 7e3);
+    if (!(courseFolder instanceof import_obsidian4.TFolder)) {
+      new import_obsidian4.Notice(`\u274C Folder not found: ${folderPath}`, 7e3);
       return;
     }
-    const reportPath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
+    const reportPath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/Failed_Chapters.md`);
     const reportFile = this.app.vault.getAbstractFileByPath(reportPath);
-    if (!(reportFile instanceof import_obsidian.TFile)) {
-      new import_obsidian.Notice(`No Failed_Chapters.md found in ${courseFolder.path}`, 7e3);
+    if (!(reportFile instanceof import_obsidian4.TFile)) {
+      new import_obsidian4.Notice(`No Failed_Chapters.md found in ${courseFolder.path}`, 7e3);
       return;
     }
     const report = await this.app.vault.read(reportFile);
     const chapters = parseFailedChapters(report);
     if (chapters.length === 0) {
-      new import_obsidian.Notice("No failed chapters found to resume");
+      new import_obsidian4.Notice("No failed chapters found to resume");
       this.finishProgress("No failed chapters found");
       return;
     }
-    new import_obsidian.Notice(`\u{1F501} Resuming ${chapters.length} failed chapters`);
+    new import_obsidian4.Notice(`\u{1F501} Resuming ${chapters.length} failed chapters`);
     this.showProgress(`Resuming failed chapters: 0/${chapters.length}`, 5);
     try {
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
@@ -668,7 +866,7 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
       const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
         await this.writeFailureReport(courseFolder, courseFolder.path, failedResults);
-        new import_obsidian.Notice(
+        new import_obsidian4.Notice(
           `\u26A0\uFE0F Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
           1e4
         );
@@ -677,41 +875,41 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
         );
       } else {
         await this.clearFailureReport(courseFolder, courseFolder.path);
-        new import_obsidian.Notice(`\u2705 Resume complete: ${chapters.length} chapters generated`);
+        new import_obsidian4.Notice(`\u2705 Resume complete: ${chapters.length} chapters generated`);
         this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
       }
     } catch (error) {
       const errorMsg = errorToMessage(error);
-      new import_obsidian.Notice(`\u274C Resume failed: ${errorMsg}`, 7e3);
+      new import_obsidian4.Notice(`\u274C Resume failed: ${errorMsg}`, 7e3);
       this.finishProgress(`Resume failed: ${errorMsg}`);
       console.error("Resume generation error:", error);
     }
   }
   async generate(courseName) {
     if (!this.settings.apiKey) {
-      new import_obsidian.Notice("\u274C API Key not set! Please configure it in settings.");
+      new import_obsidian4.Notice("\u274C API Key not set! Please configure it in settings.");
       return;
     }
-    new import_obsidian.Notice(`\u{1F4DA} Generating: ${courseName}`);
+    new import_obsidian4.Notice(`\u{1F4DA} Generating: ${courseName}`);
     this.showProgress(`Starting ${courseName}`, 1);
     try {
       this.showProgress(`Generating outline: ${courseName}`, 5);
-      new import_obsidian.Notice("\u23F3 Generating outline...");
+      new import_obsidian4.Notice("\u23F3 Generating outline...");
       const outline = await this.fetchOutline(courseName);
-      const folderPath = (0, import_obsidian.normalizePath)(courseName);
+      const folderPath = (0, import_obsidian4.normalizePath)(courseName);
       let courseFolder;
       const existing = this.app.vault.getAbstractFileByPath(folderPath);
-      if (existing instanceof import_obsidian.TFolder) {
+      if (existing instanceof import_obsidian4.TFolder) {
         courseFolder = existing;
-        new import_obsidian.Notice(`\u{1F4C1} Using existing folder: ${courseName}`);
+        new import_obsidian4.Notice(`\u{1F4C1} Using existing folder: ${courseName}`);
       } else if (existing) {
         const errorMsg = `Path "${folderPath}" exists as a file, not a folder. Please rename or delete it manually.`;
-        new import_obsidian.Notice(`\u274C ${errorMsg}`, 7e3);
+        new import_obsidian4.Notice(`\u274C ${errorMsg}`, 7e3);
         throw new Error(errorMsg);
       } else {
         try {
           courseFolder = await this.app.vault.createFolder(folderPath);
-          new import_obsidian.Notice(`\u{1F4C1} Created folder: ${courseName}`);
+          new import_obsidian4.Notice(`\u{1F4C1} Created folder: ${courseName}`);
         } catch (error) {
           throw new Error(
             `Failed to create folder "${folderPath}": ${errorToMessage(error)}`
@@ -724,17 +922,17 @@ var KnowledgePlugin = class extends import_obsidian.Plugin {
 *${headerText.generatedAt}: ${(/* @__PURE__ */ new Date()).toLocaleString()}*
 
 ${outline}`;
-      const outlineFilePath = (0, import_obsidian.normalizePath)(`${courseFolder.path}/Outlines.md`);
+      const outlineFilePath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/Outlines.md`);
       await this.app.vault.create(outlineFilePath, outlineContent);
       this.showProgress(`Outline saved: ${courseName}`, 15);
-      new import_obsidian.Notice("\u2713 Outlines.md created");
+      new import_obsidian4.Notice("\u2713 Outlines.md created");
       const chapters = parseChapterTitles(outline);
       if (chapters.length === 0) {
-        new import_obsidian.Notice("\u26A0\uFE0F No chapters found in outline");
+        new import_obsidian4.Notice("\u26A0\uFE0F No chapters found in outline");
         this.finishProgress("No chapters found");
         return;
       }
-      new import_obsidian.Notice(`\u{1F4D6} Found ${chapters.length} chapters, generating content...`);
+      new import_obsidian4.Notice(`\u{1F4D6} Found ${chapters.length} chapters, generating content...`);
       this.showProgress(`0/${chapters.length} chapters generated`, 15);
       const chapterSem = new Semaphore(this.settings.chapterConcurrency);
       let completedChapters = 0;
@@ -764,7 +962,7 @@ ${outline}`;
       await this.writeFailureReport(courseFolder, courseName, failedResults);
       const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
-        new import_obsidian.Notice(
+        new import_obsidian4.Notice(
           `\u26A0\uFE0F Done with failures: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
           1e4
         );
@@ -773,179 +971,19 @@ ${outline}`;
         );
       } else {
         await this.clearFailureReport(courseFolder, courseName);
-        new import_obsidian.Notice(
+        new import_obsidian4.Notice(
           `\u2705 Done! Generated ${chapters.length} chapters for ${courseName}`
         );
         this.finishProgress(`Done: ${chapters.length} chapters generated`);
       }
     } catch (error) {
       const errorMsg = errorToMessage(error);
-      new import_obsidian.Notice(`\u274C Error: ${errorMsg}`, 5e3);
+      new import_obsidian4.Notice(`\u274C Error: ${errorMsg}`, 5e3);
       this.finishProgress(`Failed: ${errorMsg}`);
       console.error("Generation error:", error);
     }
   }
 };
-var InputModal = class extends import_obsidian.Modal {
-  constructor(app, plugin) {
-    super(app);
-    this.plugin = plugin;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("knowledge-input-modal");
-    const input = contentEl.createEl("input", {
-      type: "text",
-      placeholder: "Enter subject (e.g. Signal Processing)"
-    });
-    const button = contentEl.createEl("button", {
-      text: "Generate"
-    });
-    button.onclick = async () => {
-      const subject = input.value.trim();
-      if (!subject) {
-        new import_obsidian.Notice("Please enter a subject name");
-        return;
-      }
-      this.close();
-      void this.plugin.generate(subject);
-    };
-    input.focus();
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        button.click();
-      }
-    });
-  }
-};
-var ResumeFailedModal = class extends import_obsidian.Modal {
-  constructor(app, plugin, initialCourseName) {
-    super(app);
-    this.plugin = plugin;
-    this.initialCourseName = initialCourseName;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("knowledge-input-modal");
-    contentEl.createEl("p", {
-      cls: "knowledge-modal-help",
-      text: "Resume chapters listed in Failed_Chapters.md for a subject folder."
-    });
-    const input = contentEl.createEl("input", {
-      type: "text",
-      placeholder: "Subject folder (e.g. Signal Processing)",
-      value: this.initialCourseName
-    });
-    const button = contentEl.createEl("button", {
-      text: "Resume failed chapters"
-    });
-    button.onclick = async () => {
-      const subject = input.value.trim();
-      if (!subject) {
-        new import_obsidian.Notice("Please enter a subject folder name");
-        return;
-      }
-      this.close();
-      void this.plugin.resumeFailedChapters(subject);
-    };
-    input.focus();
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        button.click();
-      }
-    });
-  }
-};
-var SettingTab = class extends import_obsidian.PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass("knowledge-settings");
-    new import_obsidian.Setting(containerEl).setName("API key").setDesc("Your provider API key. The default endpoint uses Google's OpenAI-compatible Gemini API.").addText(
-      (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
-        this.plugin.settings.apiKey = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("API base URL").setDesc(
-      `OpenAI-compatible API base URL. Default: ${DEFAULT_SETTINGS.apiBaseUrl}`
-    ).addText(
-      (text) => text.setValue(this.plugin.settings.apiBaseUrl).onChange(async (value) => {
-        this.plugin.settings.apiBaseUrl = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Outline model").setDesc("LLM model for generating course outlines").addText(
-      (text) => text.setValue(this.plugin.settings.modelOutline).onChange(async (value) => {
-        this.plugin.settings.modelOutline = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Chapter model").setDesc("LLM model for generating chapter details").addText(
-      (text) => text.setValue(this.plugin.settings.modelChapter).onChange(async (value) => {
-        this.plugin.settings.modelChapter = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Max completion tokens").setDesc(
-      "Optional output token limit passed as max_completion_tokens. Leave empty to omit it; set a larger value if your provider truncates long chapters."
-    ).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = "1";
-      text.inputEl.step = "1";
-      return text.setPlaceholder("None").setValue(
-        this.plugin.settings.maxCompletionTokens === null ? "" : String(this.plugin.settings.maxCompletionTokens)
-      ).onChange(async (value) => {
-        this.plugin.settings.maxCompletionTokens = parseOptionalPositiveInteger(value);
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian.Setting(containerEl).setName("Concurrency").setDesc(
-      "Manual concurrency for course-level API calls. Default is 1 for stability on free or rate-limited providers."
-    ).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = String(MIN_CONCURRENCY);
-      text.inputEl.max = String(MAX_COURSE_CONCURRENCY);
-      text.inputEl.step = "1";
-      return text.setPlaceholder(String(DEFAULT_SETTINGS.concurrency)).setValue(String(this.plugin.settings.concurrency)).onChange(async (value) => {
-        this.plugin.settings.concurrency = clampInteger(
-          Number(value),
-          MIN_CONCURRENCY,
-          MAX_COURSE_CONCURRENCY
-        );
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian.Setting(containerEl).setName("Chapter concurrency").setDesc(
-      "Manual concurrency for chapter generation. Default is 1; increase only if your provider is stable under parallel requests."
-    ).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = String(MIN_CONCURRENCY);
-      text.inputEl.max = String(MAX_CHAPTER_CONCURRENCY);
-      text.inputEl.step = "1";
-      return text.setPlaceholder(String(DEFAULT_SETTINGS.chapterConcurrency)).setValue(String(this.plugin.settings.chapterConcurrency)).onChange(async (value) => {
-        this.plugin.settings.chapterConcurrency = clampInteger(
-          Number(value),
-          MIN_CONCURRENCY,
-          MAX_CHAPTER_CONCURRENCY
-        );
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian.Setting(containerEl).setName("Language").setDesc("Output language preference").addDropdown((dropdown) => {
-      Object.entries(LANGUAGE_OPTIONS).forEach(([value, label]) => {
-        dropdown.addOption(value, label);
-      });
-      return dropdown.setValue(this.plugin.settings.language).onChange(async (v) => {
-        this.plugin.settings.language = v;
-        await this.plugin.saveSettings();
-      });
-    });
-  }
-};
+
+// main.ts
+var main_default = KnowledgePlugin;

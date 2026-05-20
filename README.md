@@ -120,7 +120,7 @@ generated subject folder.
 The plugin currently provides presets for English, Simplified Chinese,
 Traditional Chinese, Japanese, Korean, Vietnamese, Thai, Indonesian, Malay,
 Hindi, Arabic, German, French, Spanish, Italian, Portuguese, Dutch, Swedish,
-Polish, Turkish, and Russian.
+Finnish, Polish, Turkish, and Russian.
 
 ## API Providers
 
