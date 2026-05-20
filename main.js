@@ -770,7 +770,22 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     this.setupProgressStatus();
     const uiText = getUiText(this.settings.language);
     this.registerLocalizedCommands(uiText);
-    this.createRibbonIcons(uiText);
+    this.generateRibbonIcon = this.addRibbonIcon(
+      "book-open",
+      uiText.generateKnowledge,
+      () => {
+        new InputModal(this.app, this).open();
+      }
+    );
+    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.resumeRibbonIcon = this.addRibbonIcon(
+      "refresh-cw",
+      uiText.resumeFailedChapters,
+      () => {
+        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
+      }
+    );
+    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
     this.addSettingTab(new SettingTab(this.app, this));
   }
   async loadSettings() {
@@ -796,7 +811,8 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   refreshLocalizedUi() {
     const uiText = getUiText(this.settings.language);
     this.registerLocalizedCommands(uiText);
-    this.createRibbonIcons(uiText);
+    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
+    this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
   }
   registerLocalizedCommands(uiText) {
     if (this.commandsRegistered) {
@@ -820,32 +836,6 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
       }
     });
     this.commandsRegistered = true;
-  }
-  createRibbonIcons(uiText) {
-    var _a, _b;
-    (_a = this.generateRibbonIcon) == null ? void 0 : _a.detach();
-    (_b = this.resumeRibbonIcon) == null ? void 0 : _b.detach();
-    this.generateRibbonIcon = this.addRibbonIcon(
-      "book-open",
-      uiText.generateKnowledge,
-      () => {
-        new InputModal(this.app, this).open();
-      }
-    );
-    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
-    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
-    this.resumeRibbonIcon = this.addRibbonIcon(
-      "refresh-cw",
-      uiText.resumeFailedChapters,
-      () => {
-        new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
-      }
-    );
-    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
-    this.updateRibbonLabel(
-      this.resumeRibbonIcon,
-      uiText.resumeFailedChapters
-    );
   }
   updateRibbonLabel(ribbonIcon, label) {
     if (!ribbonIcon) {
