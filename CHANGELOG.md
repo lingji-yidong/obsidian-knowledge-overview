@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.7
+
+- Add configurable OpenAI-compatible API base URL and model settings.
+- Add optional max completion token limits and separate generation concurrency settings.
+- Add retry handling, truncated-response detection, failed chapter reports, and resume support.
+- Add localized command and ribbon labels for supported output languages.
+- Improve settings layout and update the demo screenshot.
+
 ## 0.0.6
 
 - Update the settings tab heading to satisfy Obsidian review guidelines.
