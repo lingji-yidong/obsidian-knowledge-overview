@@ -503,7 +503,16 @@ export default class KnowledgePlugin extends Plugin {
       const headerText = getHeaderText(this.settings.language);
       const outlineContent = `# ${courseName} ${headerText.outlineTitle}\n\n*${headerText.generatedAt}: ${new Date().toLocaleString()}*\n\n${outline}`;
       const outlineFilePath = normalizePath(`${courseFolder.path}/Outlines.md`);
-      await this.app.vault.create(outlineFilePath, outlineContent);
+      const existingOutline = this.app.vault.getAbstractFileByPath(outlineFilePath);
+
+      if (existingOutline instanceof TFile) {
+        await this.app.vault.modify(existingOutline, outlineContent);
+      } else if (existingOutline) {
+        throw new Error(`Path "${outlineFilePath}" exists and is not a file`);
+      } else {
+        await this.app.vault.create(outlineFilePath, outlineContent);
+      }
+
       this.showProgress(`Outline saved: ${courseName}`, 15);
       new Notice("✓ Outlines.md created");
 

@@ -1166,7 +1166,14 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
 
 ${outline}`;
       const outlineFilePath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/Outlines.md`);
-      await this.app.vault.create(outlineFilePath, outlineContent);
+      const existingOutline = this.app.vault.getAbstractFileByPath(outlineFilePath);
+      if (existingOutline instanceof import_obsidian4.TFile) {
+        await this.app.vault.modify(existingOutline, outlineContent);
+      } else if (existingOutline) {
+        throw new Error(`Path "${outlineFilePath}" exists and is not a file`);
+      } else {
+        await this.app.vault.create(outlineFilePath, outlineContent);
+      }
       this.showProgress(`Outline saved: ${courseName}`, 15);
       new import_obsidian4.Notice("\u2713 Outlines.md created");
       const chapters = parseChapterTitles(outline);
