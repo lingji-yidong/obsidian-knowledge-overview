@@ -115,6 +115,11 @@ If the network is unstable, transient provider errors are retried automatically.
 Any chapters that still fail are listed in `Failed_Chapters.md` inside the
 generated subject folder.
 
+If a provider stops a response because it reached the output length limit, the
+plugin treats that chapter as failed instead of saving a truncated note. Increase
+`Max completion tokens` or switch to a model/provider with a larger output limit,
+then run resume generation.
+
 ## Supported Languages
 
 The plugin currently provides presets for English, Simplified Chinese,

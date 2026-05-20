@@ -56,6 +56,14 @@ var ApiError = class extends Error {
     this.status = status;
   }
 };
+var CompletionTruncatedError = class extends Error {
+  constructor() {
+    super(
+      "API response was truncated because the model reached its output token limit. Increase Max completion tokens or choose a model/provider with a larger output limit."
+    );
+    this.name = "CompletionTruncatedError";
+  }
+};
 function isRetryableStatus(status) {
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 }
@@ -143,6 +151,9 @@ async function callChatCompletion(apiKey, apiBaseUrl, model, prompt, maxCompleti
   const content = extractChatCompletionContent(data);
   if (content === null) {
     throw new Error("API response did not include a message content");
+  }
+  if (data.choices[0].finish_reason === "length") {
+    throw new CompletionTruncatedError();
   }
   return content;
 }

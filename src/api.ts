@@ -7,6 +7,7 @@ interface ChatCompletionResponse {
       content?: unknown;
     };
     text?: unknown;
+    finish_reason?: unknown;
   }>;
 }
 
@@ -17,6 +18,15 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
     this.status = status;
+  }
+}
+
+export class CompletionTruncatedError extends Error {
+  constructor() {
+    super(
+      "API response was truncated because the model reached its output token limit. Increase Max completion tokens or choose a model/provider with a larger output limit.",
+    );
+    this.name = "CompletionTruncatedError";
   }
 }
 
@@ -143,6 +153,9 @@ export async function callChatCompletion(
     throw new Error("API response did not include a message content");
   }
 
+  if (data.choices[0].finish_reason === "length") {
+    throw new CompletionTruncatedError();
+  }
+
   return content;
 }
-
