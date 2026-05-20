@@ -38,6 +38,8 @@ export default class KnowledgePlugin extends Plugin {
   private progressLabelEl?: HTMLElement;
   private progressFillEl?: HTMLElement;
   private progressNotice?: Notice;
+  private generateRibbonIcon?: HTMLElement;
+  private resumeRibbonIcon?: HTMLElement;
 
   async onload() {
     await this.loadSettings();
@@ -60,23 +62,23 @@ export default class KnowledgePlugin extends Plugin {
       },
     });
 
-    const ribbonIcon = this.addRibbonIcon(
+    this.generateRibbonIcon = this.addRibbonIcon(
       "book-open",
       uiText.generateKnowledge,
       () => {
         new InputModal(this.app, this).open();
       },
     );
-    ribbonIcon.addClass("knowledge-ribbon-icon");
+    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
 
-    const resumeRibbonIcon = this.addRibbonIcon(
+    this.resumeRibbonIcon = this.addRibbonIcon(
       "refresh-cw",
       uiText.resumeFailedChapters,
       () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       },
     );
-    resumeRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
 
     this.addSettingTab(new SettingTab(this.app, this));
   }
@@ -101,6 +103,21 @@ export default class KnowledgePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  refreshLocalizedUi(): void {
+    const uiText = getUiText(this.settings.language);
+    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
+    this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
+  }
+
+  private updateRibbonLabel(ribbonIcon: HTMLElement | undefined, label: string): void {
+    if (!ribbonIcon) {
+      return;
+    }
+
+    ribbonIcon.setAttr("aria-label", label);
+    ribbonIcon.setAttr("title", label);
   }
 
   getActiveCourseName(): string {

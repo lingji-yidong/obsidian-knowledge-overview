@@ -753,6 +753,7 @@ var SettingTab = class extends import_obsidian3.PluginSettingTab {
       return dropdown.setValue(this.plugin.settings.language).onChange(async (v) => {
         this.plugin.settings.language = v;
         await this.plugin.saveSettings();
+        this.plugin.refreshLocalizedUi();
       });
     });
   }
@@ -778,22 +779,22 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       }
     });
-    const ribbonIcon = this.addRibbonIcon(
+    this.generateRibbonIcon = this.addRibbonIcon(
       "book-open",
       uiText.generateKnowledge,
       () => {
         new InputModal(this.app, this).open();
       }
     );
-    ribbonIcon.addClass("knowledge-ribbon-icon");
-    const resumeRibbonIcon = this.addRibbonIcon(
+    this.generateRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.resumeRibbonIcon = this.addRibbonIcon(
       "refresh-cw",
       uiText.resumeFailedChapters,
       () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       }
     );
-    resumeRibbonIcon.addClass("knowledge-ribbon-icon");
+    this.resumeRibbonIcon.addClass("knowledge-ribbon-icon");
     this.addSettingTab(new SettingTab(this.app, this));
   }
   async loadSettings() {
@@ -815,6 +816,18 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   }
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+  refreshLocalizedUi() {
+    const uiText = getUiText(this.settings.language);
+    this.updateRibbonLabel(this.generateRibbonIcon, uiText.generateKnowledge);
+    this.updateRibbonLabel(this.resumeRibbonIcon, uiText.resumeFailedChapters);
+  }
+  updateRibbonLabel(ribbonIcon, label) {
+    if (!ribbonIcon) {
+      return;
+    }
+    ribbonIcon.setAttr("aria-label", label);
+    ribbonIcon.setAttr("title", label);
   }
   getActiveCourseName() {
     var _a, _b;

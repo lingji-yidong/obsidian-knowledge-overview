@@ -158,8 +158,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async (v) => {
             this.plugin.settings.language = v;
             await this.plugin.saveSettings();
+            this.plugin.refreshLocalizedUi();
           });
       });
   }
 }
-

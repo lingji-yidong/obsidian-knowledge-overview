@@ -57,7 +57,17 @@
   min-width: 0;
 }
 
-.knowledge-settings .setting-item-control input {
+.knowledge-settings .setting-item-info {
+  min-width: 0;
+}
+
+.knowledge-settings .setting-item-control {
+  flex: 0 0 min(40%, 512px);
+  width: min(40%, 512px);
+}
+
+.knowledge-settings .setting-item-control input,
+.knowledge-settings .setting-item-control select {
   width: 100%;
 }
 
@@ -69,6 +79,7 @@
 
   .knowledge-settings .setting-item-info,
   .knowledge-settings .setting-item-control {
+    flex: none;
     width: 100%;
   }
 }
