@@ -30,6 +30,11 @@ export interface HeaderText {
   generated: string;
 }
 
+export interface UiText {
+  generateKnowledge: string;
+  resumeFailedChapters: string;
+}
+
 const HEADER_TEXT: Record<string, HeaderText> = {
   en: {
     outlineTitle: "Outline",
@@ -166,10 +171,105 @@ const HEADER_TEXT: Record<string, HeaderText> = {
   },
 };
 
+const UI_TEXT: Record<string, UiText> = {
+  en: {
+    generateKnowledge: "Generate Knowledge Overview",
+    resumeFailedChapters: "Resume Failed Chapter Generation",
+  },
+  zh: {
+    generateKnowledge: "生成知识概览",
+    resumeFailedChapters: "继续生成失败章节",
+  },
+  zh_tw: {
+    generateKnowledge: "生成知識概覽",
+    resumeFailedChapters: "繼續生成失敗章節",
+  },
+  ja: {
+    generateKnowledge: "知識概要を生成",
+    resumeFailedChapters: "失敗した章の生成を再開",
+  },
+  ko: {
+    generateKnowledge: "지식 개요 생성",
+    resumeFailedChapters: "실패한 장 생성 재개",
+  },
+  vi: {
+    generateKnowledge: "Tạo tổng quan kiến thức",
+    resumeFailedChapters: "Tiếp tục tạo các chương lỗi",
+  },
+  th: {
+    generateKnowledge: "สร้างภาพรวมความรู้",
+    resumeFailedChapters: "สร้างบทที่ล้มเหลวต่อ",
+  },
+  id: {
+    generateKnowledge: "Buat ringkasan pengetahuan",
+    resumeFailedChapters: "Lanjutkan pembuatan bab gagal",
+  },
+  ms: {
+    generateKnowledge: "Jana gambaran pengetahuan",
+    resumeFailedChapters: "Sambung penjanaan bab yang gagal",
+  },
+  hi: {
+    generateKnowledge: "ज्ञान अवलोकन बनाएं",
+    resumeFailedChapters: "विफल अध्यायों का निर्माण फिर शुरू करें",
+  },
+  ar: {
+    generateKnowledge: "إنشاء نظرة عامة معرفية",
+    resumeFailedChapters: "استئناف إنشاء الفصول الفاشلة",
+  },
+  de: {
+    generateKnowledge: "Wissensübersicht erstellen",
+    resumeFailedChapters: "Fehlgeschlagene Kapitel fortsetzen",
+  },
+  fr: {
+    generateKnowledge: "Générer une vue d'ensemble",
+    resumeFailedChapters: "Reprendre les chapitres échoués",
+  },
+  es: {
+    generateKnowledge: "Generar resumen de conocimiento",
+    resumeFailedChapters: "Reanudar capítulos fallidos",
+  },
+  it: {
+    generateKnowledge: "Genera panoramica della conoscenza",
+    resumeFailedChapters: "Riprendi capitoli non riusciti",
+  },
+  pt: {
+    generateKnowledge: "Gerar visão geral do conhecimento",
+    resumeFailedChapters: "Retomar capítulos com falha",
+  },
+  nl: {
+    generateKnowledge: "Kennisoverzicht genereren",
+    resumeFailedChapters: "Mislukte hoofdstukken hervatten",
+  },
+  sv: {
+    generateKnowledge: "Skapa kunskapsöversikt",
+    resumeFailedChapters: "Återuppta misslyckade kapitel",
+  },
+  fi: {
+    generateKnowledge: "Luo tietokatsaus",
+    resumeFailedChapters: "Jatka epäonnistuneiden lukujen luontia",
+  },
+  pl: {
+    generateKnowledge: "Wygeneruj przegląd wiedzy",
+    resumeFailedChapters: "Wznów nieudane rozdziały",
+  },
+  tr: {
+    generateKnowledge: "Bilgi genel bakışı oluştur",
+    resumeFailedChapters: "Başarısız bölümleri sürdür",
+  },
+  ru: {
+    generateKnowledge: "Создать обзор знаний",
+    resumeFailedChapters: "Возобновить неудачные главы",
+  },
+};
+
 export function getLanguageLabel(language: string): string {
   return LANGUAGE_OPTIONS[language] ?? language;
 }
 
 export function getHeaderText(language: string): HeaderText {
   return HEADER_TEXT[language] ?? HEADER_TEXT.en;
+}
+
+export function getUiText(language: string): UiText {
+  return UI_TEXT[language] ?? UI_TEXT.en;
 }

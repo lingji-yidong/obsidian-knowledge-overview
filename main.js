@@ -306,6 +306,96 @@ var HEADER_TEXT = {
     generated: "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0438 \u0434\u043B\u044F \u043F\u043E\u0432\u0442\u043E\u0440\u0435\u043D\u0438\u044F \u0438 \u0438\u043D\u0442\u0435\u0440\u0432\u044C\u044E. \u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E."
   }
 };
+var UI_TEXT = {
+  en: {
+    generateKnowledge: "Generate Knowledge Overview",
+    resumeFailedChapters: "Resume Failed Chapter Generation"
+  },
+  zh: {
+    generateKnowledge: "\u751F\u6210\u77E5\u8BC6\u6982\u89C8",
+    resumeFailedChapters: "\u7EE7\u7EED\u751F\u6210\u5931\u8D25\u7AE0\u8282"
+  },
+  zh_tw: {
+    generateKnowledge: "\u751F\u6210\u77E5\u8B58\u6982\u89BD",
+    resumeFailedChapters: "\u7E7C\u7E8C\u751F\u6210\u5931\u6557\u7AE0\u7BC0"
+  },
+  ja: {
+    generateKnowledge: "\u77E5\u8B58\u6982\u8981\u3092\u751F\u6210",
+    resumeFailedChapters: "\u5931\u6557\u3057\u305F\u7AE0\u306E\u751F\u6210\u3092\u518D\u958B"
+  },
+  ko: {
+    generateKnowledge: "\uC9C0\uC2DD \uAC1C\uC694 \uC0DD\uC131",
+    resumeFailedChapters: "\uC2E4\uD328\uD55C \uC7A5 \uC0DD\uC131 \uC7AC\uAC1C"
+  },
+  vi: {
+    generateKnowledge: "T\u1EA1o t\u1ED5ng quan ki\u1EBFn th\u1EE9c",
+    resumeFailedChapters: "Ti\u1EBFp t\u1EE5c t\u1EA1o c\xE1c ch\u01B0\u01A1ng l\u1ED7i"
+  },
+  th: {
+    generateKnowledge: "\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E20\u0E32\u0E1E\u0E23\u0E27\u0E21\u0E04\u0E27\u0E32\u0E21\u0E23\u0E39\u0E49",
+    resumeFailedChapters: "\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E1A\u0E17\u0E17\u0E35\u0E48\u0E25\u0E49\u0E21\u0E40\u0E2B\u0E25\u0E27\u0E15\u0E48\u0E2D"
+  },
+  id: {
+    generateKnowledge: "Buat ringkasan pengetahuan",
+    resumeFailedChapters: "Lanjutkan pembuatan bab gagal"
+  },
+  ms: {
+    generateKnowledge: "Jana gambaran pengetahuan",
+    resumeFailedChapters: "Sambung penjanaan bab yang gagal"
+  },
+  hi: {
+    generateKnowledge: "\u091C\u094D\u091E\u093E\u0928 \u0905\u0935\u0932\u094B\u0915\u0928 \u092C\u0928\u093E\u090F\u0902",
+    resumeFailedChapters: "\u0935\u093F\u092B\u0932 \u0905\u0927\u094D\u092F\u093E\u092F\u094B\u0902 \u0915\u093E \u0928\u093F\u0930\u094D\u092E\u093E\u0923 \u092B\u093F\u0930 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902"
+  },
+  ar: {
+    generateKnowledge: "\u0625\u0646\u0634\u0627\u0621 \u0646\u0638\u0631\u0629 \u0639\u0627\u0645\u0629 \u0645\u0639\u0631\u0641\u064A\u0629",
+    resumeFailedChapters: "\u0627\u0633\u062A\u0626\u0646\u0627\u0641 \u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u0641\u0635\u0648\u0644 \u0627\u0644\u0641\u0627\u0634\u0644\u0629"
+  },
+  de: {
+    generateKnowledge: "Wissens\xFCbersicht erstellen",
+    resumeFailedChapters: "Fehlgeschlagene Kapitel fortsetzen"
+  },
+  fr: {
+    generateKnowledge: "G\xE9n\xE9rer une vue d'ensemble",
+    resumeFailedChapters: "Reprendre les chapitres \xE9chou\xE9s"
+  },
+  es: {
+    generateKnowledge: "Generar resumen de conocimiento",
+    resumeFailedChapters: "Reanudar cap\xEDtulos fallidos"
+  },
+  it: {
+    generateKnowledge: "Genera panoramica della conoscenza",
+    resumeFailedChapters: "Riprendi capitoli non riusciti"
+  },
+  pt: {
+    generateKnowledge: "Gerar vis\xE3o geral do conhecimento",
+    resumeFailedChapters: "Retomar cap\xEDtulos com falha"
+  },
+  nl: {
+    generateKnowledge: "Kennisoverzicht genereren",
+    resumeFailedChapters: "Mislukte hoofdstukken hervatten"
+  },
+  sv: {
+    generateKnowledge: "Skapa kunskaps\xF6versikt",
+    resumeFailedChapters: "\xC5teruppta misslyckade kapitel"
+  },
+  fi: {
+    generateKnowledge: "Luo tietokatsaus",
+    resumeFailedChapters: "Jatka ep\xE4onnistuneiden lukujen luontia"
+  },
+  pl: {
+    generateKnowledge: "Wygeneruj przegl\u0105d wiedzy",
+    resumeFailedChapters: "Wzn\xF3w nieudane rozdzia\u0142y"
+  },
+  tr: {
+    generateKnowledge: "Bilgi genel bak\u0131\u015F\u0131 olu\u015Ftur",
+    resumeFailedChapters: "Ba\u015Far\u0131s\u0131z b\xF6l\xFCmleri s\xFCrd\xFCr"
+  },
+  ru: {
+    generateKnowledge: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043E\u0431\u0437\u043E\u0440 \u0437\u043D\u0430\u043D\u0438\u0439",
+    resumeFailedChapters: "\u0412\u043E\u0437\u043E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u043D\u0435\u0443\u0434\u0430\u0447\u043D\u044B\u0435 \u0433\u043B\u0430\u0432\u044B"
+  }
+};
 function getLanguageLabel(language) {
   var _a;
   return (_a = LANGUAGE_OPTIONS[language]) != null ? _a : language;
@@ -313,6 +403,10 @@ function getLanguageLabel(language) {
 function getHeaderText(language) {
   var _a;
   return (_a = HEADER_TEXT[language]) != null ? _a : HEADER_TEXT.en;
+}
+function getUiText(language) {
+  var _a;
+  return (_a = UI_TEXT[language]) != null ? _a : UI_TEXT.en;
 }
 
 // src/modals.ts
@@ -658,23 +752,24 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   async onload() {
     await this.loadSettings();
     this.setupProgressStatus();
+    const uiText = getUiText(this.settings.language);
     this.addCommand({
       id: "generate-knowledge",
-      name: "Generate Knowledge",
+      name: uiText.generateKnowledge,
       callback: () => {
         new InputModal(this.app, this).open();
       }
     });
     this.addCommand({
       id: "resume-failed-chapters",
-      name: "Resume Failed Chapter Generation",
+      name: uiText.resumeFailedChapters,
       callback: () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       }
     });
     const ribbonIcon = this.addRibbonIcon(
       "book-open",
-      "Generate Knowledge Overview",
+      uiText.generateKnowledge,
       () => {
         new InputModal(this.app, this).open();
       }
@@ -682,7 +777,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     ribbonIcon.addClass("knowledge-ribbon-icon");
     const resumeRibbonIcon = this.addRibbonIcon(
       "refresh-cw",
-      "Resume Failed Chapter Generation",
+      uiText.resumeFailedChapters,
       () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       }

@@ -7,7 +7,7 @@ import {
   normalizePath,
 } from "obsidian";
 import { ApiError, callChatCompletion, isRetryableStatus } from "./api";
-import { getHeaderText } from "./i18n";
+import { getHeaderText, getUiText } from "./i18n";
 import { InputModal, ResumeFailedModal } from "./modals";
 import { buildChapterPrompt, buildOutlinePrompt } from "./prompts";
 import { SettingTab } from "./settings-tab";
@@ -42,10 +42,11 @@ export default class KnowledgePlugin extends Plugin {
   async onload() {
     await this.loadSettings();
     this.setupProgressStatus();
+    const uiText = getUiText(this.settings.language);
 
     this.addCommand({
       id: "generate-knowledge",
-      name: "Generate Knowledge",
+      name: uiText.generateKnowledge,
       callback: () => {
         new InputModal(this.app, this).open();
       },
@@ -53,7 +54,7 @@ export default class KnowledgePlugin extends Plugin {
 
     this.addCommand({
       id: "resume-failed-chapters",
-      name: "Resume Failed Chapter Generation",
+      name: uiText.resumeFailedChapters,
       callback: () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       },
@@ -61,7 +62,7 @@ export default class KnowledgePlugin extends Plugin {
 
     const ribbonIcon = this.addRibbonIcon(
       "book-open",
-      "Generate Knowledge Overview",
+      uiText.generateKnowledge,
       () => {
         new InputModal(this.app, this).open();
       },
@@ -70,7 +71,7 @@ export default class KnowledgePlugin extends Plugin {
 
     const resumeRibbonIcon = this.addRibbonIcon(
       "refresh-cw",
-      "Resume Failed Chapter Generation",
+      uiText.resumeFailedChapters,
       () => {
         new ResumeFailedModal(this.app, this, this.getActiveCourseName()).open();
       },
@@ -532,4 +533,3 @@ export default class KnowledgePlugin extends Plugin {
     }
   }
 }
-
