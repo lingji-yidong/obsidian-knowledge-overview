@@ -191,11 +191,119 @@ var HEADER_TEXT = {
     chapterNumber: "\u7AE0\u7BC0\u7DE8\u865F",
     generated: "\u81EA\u52D5\u751F\u6210\u7684\u8907\u7FD2/\u9762\u8A66\u77E5\u8B58\u9EDE\uFF0C\u53EF\u81EA\u7531\u7DE8\u8F2F\u88DC\u5145"
   },
+  ja: {
+    outlineTitle: "\u30A2\u30A6\u30C8\u30E9\u30A4\u30F3",
+    generatedAt: "\u751F\u6210\u65E5\u6642",
+    chapterNumber: "\u7AE0",
+    generated: "\u81EA\u52D5\u751F\u6210\u3055\u308C\u305F\u5FA9\u7FD2\u30FB\u9762\u63A5\u7528\u30CE\u30FC\u30C8\u3067\u3059\u3002\u81EA\u7531\u306B\u7DE8\u96C6\u3067\u304D\u307E\u3059\u3002"
+  },
+  ko: {
+    outlineTitle: "\uAC1C\uC694",
+    generatedAt: "\uC0DD\uC131 \uC2DC\uAC04",
+    chapterNumber: "\uC7A5",
+    generated: "\uC790\uB3D9 \uC0DD\uC131\uB41C \uBCF5\uC2B5 \uBC0F \uC778\uD130\uBDF0 \uB178\uD2B8\uC785\uB2C8\uB2E4. \uC790\uC720\uB86D\uAC8C \uC218\uC815\uD558\uC138\uC694."
+  },
+  vi: {
+    outlineTitle: "D\xE0n \xFD",
+    generatedAt: "\u0110\u01B0\u1EE3c t\u1EA1o l\xFAc",
+    chapterNumber: "Ch\u01B0\u01A1ng",
+    generated: "Ghi ch\xFA \xF4n t\u1EADp v\xE0 ph\u1ECFng v\u1EA5n \u0111\u01B0\u1EE3c t\u1EA1o t\u1EF1 \u0111\u1ED9ng. B\u1EA1n c\xF3 th\u1EC3 ch\u1EC9nh s\u1EEDa."
+  },
+  th: {
+    outlineTitle: "\u0E42\u0E04\u0E23\u0E07\u0E23\u0E48\u0E32\u0E07",
+    generatedAt: "\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E40\u0E21\u0E37\u0E48\u0E2D",
+    chapterNumber: "\u0E1A\u0E17",
+    generated: "\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E17\u0E1A\u0E17\u0E27\u0E19\u0E41\u0E25\u0E30\u0E2A\u0E31\u0E21\u0E20\u0E32\u0E29\u0E13\u0E4C\u0E17\u0E35\u0E48\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E2D\u0E31\u0E15\u0E42\u0E19\u0E21\u0E31\u0E15\u0E34 \u0E41\u0E01\u0E49\u0E44\u0E02\u0E44\u0E14\u0E49\u0E15\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23"
+  },
+  id: {
+    outlineTitle: "Garis besar",
+    generatedAt: "Dibuat pada",
+    chapterNumber: "Bab",
+    generated: "Catatan ulasan dan wawancara yang dibuat otomatis. Silakan edit."
+  },
+  ms: {
+    outlineTitle: "Rangka",
+    generatedAt: "Dijana pada",
+    chapterNumber: "Bab",
+    generated: "Nota ulang kaji dan temu duga yang dijana automatik. Sila edit."
+  },
+  hi: {
+    outlineTitle: "\u0930\u0942\u092A\u0930\u0947\u0916\u093E",
+    generatedAt: "\u092C\u0928\u093E\u092F\u093E \u0917\u092F\u093E",
+    chapterNumber: "\u0905\u0927\u094D\u092F\u093E\u092F",
+    generated: "\u0938\u094D\u0935\u0924\u0903 \u092C\u0928\u093E\u090F \u0917\u090F \u092A\u0941\u0928\u0930\u093E\u0935\u0932\u094B\u0915\u0928 \u0914\u0930 \u0938\u093E\u0915\u094D\u0937\u093E\u0924\u094D\u0915\u093E\u0930 \u0928\u094B\u091F\u094D\u0938\u0964 \u0907\u0928\u094D\u0939\u0947\u0902 \u0938\u094D\u0935\u0924\u0902\u0924\u094D\u0930 \u0930\u0942\u092A \u0938\u0947 \u0938\u0902\u092A\u093E\u0926\u093F\u0924 \u0915\u0930\u0947\u0902\u0964"
+  },
+  ar: {
+    outlineTitle: "\u0627\u0644\u0645\u062E\u0637\u0637",
+    generatedAt: "\u062A\u0645 \u0627\u0644\u0625\u0646\u0634\u0627\u0621 \u0641\u064A",
+    chapterNumber: "\u0627\u0644\u0641\u0635\u0644",
+    generated: "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0645\u0642\u0627\u0628\u0644\u0629 \u0645\u0648\u0644\u062F\u0629 \u062A\u0644\u0642\u0627\u0626\u064A\u0627. \u064A\u0645\u0643\u0646\u0643 \u062A\u0639\u062F\u064A\u0644\u0647\u0627 \u0628\u062D\u0631\u064A\u0629."
+  },
+  de: {
+    outlineTitle: "Gliederung",
+    generatedAt: "Erstellt am",
+    chapterNumber: "Kapitel",
+    generated: "Automatisch erstellte Lern- und Interviewnotizen. Frei bearbeitbar."
+  },
+  fr: {
+    outlineTitle: "Plan",
+    generatedAt: "G\xE9n\xE9r\xE9 le",
+    chapterNumber: "Chapitre",
+    generated: "Notes de r\xE9vision et d'entretien g\xE9n\xE9r\xE9es automatiquement. Modifiez-les librement."
+  },
+  es: {
+    outlineTitle: "Esquema",
+    generatedAt: "Generado el",
+    chapterNumber: "Cap\xEDtulo",
+    generated: "Notas de repaso y entrevista generadas autom\xE1ticamente. Ed\xEDtalas libremente."
+  },
+  it: {
+    outlineTitle: "Schema",
+    generatedAt: "Generato il",
+    chapterNumber: "Capitolo",
+    generated: "Note di ripasso e colloquio generate automaticamente. Modificale liberamente."
+  },
+  pt: {
+    outlineTitle: "Esbo\xE7o",
+    generatedAt: "Gerado em",
+    chapterNumber: "Cap\xEDtulo",
+    generated: "Notas de revis\xE3o e entrevista geradas automaticamente. Edite livremente."
+  },
+  nl: {
+    outlineTitle: "Overzicht",
+    generatedAt: "Gegenereerd op",
+    chapterNumber: "Hoofdstuk",
+    generated: "Automatisch gegenereerde herhalings- en interviewnotities. Vrij te bewerken."
+  },
+  sv: {
+    outlineTitle: "Disposition",
+    generatedAt: "Skapad",
+    chapterNumber: "Kapitel",
+    generated: "Automatiskt skapade repetitions- och intervjunoteringar. Redigera fritt."
+  },
   fi: {
     outlineTitle: "J\xE4sennys",
     generatedAt: "Luotu",
     chapterNumber: "Luku",
     generated: "Automaattisesti luodut kertaus- ja haastattelumuistiinpanot. Muokkaa vapaasti."
+  },
+  pl: {
+    outlineTitle: "Konspekt",
+    generatedAt: "Wygenerowano",
+    chapterNumber: "Rozdzia\u0142",
+    generated: "Automatycznie wygenerowane notatki do powt\xF3rki i rozmowy. Edytuj swobodnie."
+  },
+  tr: {
+    outlineTitle: "Taslak",
+    generatedAt: "Olu\u015Fturulma zaman\u0131",
+    chapterNumber: "B\xF6l\xFCm",
+    generated: "Otomatik olu\u015Fturulmu\u015F tekrar ve m\xFClakat notlar\u0131. Serbest\xE7e d\xFCzenleyin."
+  },
+  ru: {
+    outlineTitle: "\u041F\u043B\u0430\u043D",
+    generatedAt: "\u0421\u043E\u0437\u0434\u0430\u043D\u043E",
+    chapterNumber: "\u0413\u043B\u0430\u0432\u0430",
+    generated: "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u0441\u043E\u0437\u0434\u0430\u043D\u043D\u044B\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0438 \u0434\u043B\u044F \u043F\u043E\u0432\u0442\u043E\u0440\u0435\u043D\u0438\u044F \u0438 \u0438\u043D\u0442\u0435\u0440\u0432\u044C\u044E. \u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0432\u043E\u0431\u043E\u0434\u043D\u043E."
   }
 };
 function getLanguageLabel(language) {
