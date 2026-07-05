@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.8
+
+- Add chapter depth presets for map-only scans, usable overviews, deep lessons,
+  and review notes.
+- Add planning-based knowledge type classification with domain-specific chapter
+  structures.
+- Add chapter quality checks and one optional repair pass for short or
+  glossary-like output.
+- Add stable bilingual heading contracts for supported output languages.
+- Improve README guidance around chapter depth, long outputs, quotas, and API
+  cost.
+
 ## 0.0.7
 
 - Add configurable OpenAI-compatible API base URL and model settings.

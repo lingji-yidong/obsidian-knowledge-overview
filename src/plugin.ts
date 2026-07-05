@@ -8,9 +8,32 @@ import {
   setTooltip,
 } from "obsidian";
 import { ApiError, callChatCompletion, isRetryableStatus } from "./api";
+import {
+  evaluateChapterQuality,
+  formatQualityReport,
+  shouldRepairChapter,
+} from "./chapterQuality";
+import {
+  applyMinimumChapterChars,
+  DENSITY_PRESETS,
+  KNOWLEDGE_DEPTH_LABELS,
+} from "./densityPresets";
 import { getHeaderText, getUiText, type UiText } from "./i18n";
+import {
+  buildManualPlan,
+  buildPlanningPrompt,
+  parsePlanningResponse,
+  selectAdapter,
+} from "./instructionalPlanner";
+import type { ChapterGenerationPlan, KnowledgeDepth } from "./instructionalTypes";
 import { InputModal, ResumeFailedModal } from "./modals";
-import { buildChapterPrompt, buildOutlinePrompt } from "./prompts";
+import {
+  buildChapterPrompt,
+  buildChapterRepairPrompt,
+  buildInstructionalSystemPrompt,
+  buildOutlinePrompt,
+} from "./prompts";
+import { normalizeKnownMarkdownHeadings } from "./sectionHeadings";
 import { SettingTab } from "./settings-tab";
 import {
   DEFAULT_SETTINGS,
@@ -87,6 +110,9 @@ export default class KnowledgePlugin extends Plugin {
     this.settings.maxCompletionTokens = parseOptionalPositiveInteger(
       this.settings.maxCompletionTokens,
     );
+    this.settings.minChapterChars =
+      parseOptionalPositiveInteger(this.settings.minChapterChars) ??
+      DEFAULT_SETTINGS.minChapterChars;
   }
 
   async saveSettings() {
@@ -203,18 +229,26 @@ export default class KnowledgePlugin extends Plugin {
     window.setTimeout(() => this.hideProgress(), 5000);
   }
 
-  async callLLM(prompt: string, model: string): Promise<string> {
+  async callLLM(
+    prompt: string,
+    model: string,
+    systemPrompt?: string,
+  ): Promise<string> {
     let lastError: unknown;
 
     for (let attempt = 0; attempt <= MAX_API_RETRIES; attempt++) {
       try {
-        return await callChatCompletion(
-          this.settings.apiKey,
-          this.settings.apiBaseUrl,
+        return await callChatCompletion({
+          apiKey: this.settings.apiKey,
+          apiBaseUrl: this.settings.apiBaseUrl,
           model,
-          prompt,
-          this.settings.maxCompletionTokens,
-        );
+          userPrompt: prompt,
+          systemPrompt,
+          maxCompletionTokens: this.settings.maxCompletionTokens,
+          temperature: this.settings.temperature,
+          reasoningEffort: this.settings.reasoningEffort,
+          verbosity: this.settings.verbosity,
+        });
       } catch (error) {
         lastError = error;
         const isLastAttempt = attempt === MAX_API_RETRIES;
@@ -247,18 +281,93 @@ export default class KnowledgePlugin extends Plugin {
   async fetchChapterNote(
     courseName: string,
     chapterName: string,
+    depth: KnowledgeDepth,
   ): Promise<string> {
     try {
-      const prompt = buildChapterPrompt(
+      const density = applyMinimumChapterChars(
+        DENSITY_PRESETS[depth],
+        this.settings.minChapterChars,
+      );
+      const plan = await this.planChapter(courseName, chapterName, depth);
+      const adapter = selectAdapter(plan);
+      const systemPrompt = buildInstructionalSystemPrompt();
+      const prompt = buildChapterPrompt({
         courseName,
         chapterName,
+        language: this.settings.language,
+        depth,
+        plan,
+        adapter,
+        density,
+      });
+      let chapter = await this.callLLM(
+        prompt,
+        this.settings.modelChapter,
+        systemPrompt,
+      );
+      chapter = normalizeKnownMarkdownHeadings(
+        chapter,
         this.settings.language,
       );
-      return await this.callLLM(prompt, this.settings.modelChapter);
+      const qualityReport = evaluateChapterQuality(chapter, density, adapter);
+
+      if (
+        this.settings.autoExpandShortChapters &&
+        shouldRepairChapter(qualityReport)
+      ) {
+        const repairPrompt = buildChapterRepairPrompt({
+          courseName,
+          chapterName,
+          language: this.settings.language,
+          density,
+          plan,
+          adapter,
+          qualityReport,
+          formattedQualityReport: formatQualityReport(qualityReport),
+          existingChapter: chapter,
+        });
+        chapter = await this.callLLM(
+          repairPrompt,
+          this.settings.modelChapter,
+          systemPrompt,
+        );
+        chapter = normalizeKnownMarkdownHeadings(
+          chapter,
+          this.settings.language,
+        );
+      }
+
+      return chapter;
     } catch (error) {
       console.error(`Error fetching chapter note for ${chapterName}:`, error);
       throw error;
     }
+  }
+
+  async planChapter(
+    courseName: string,
+    chapterName: string,
+    depth: KnowledgeDepth,
+  ): Promise<ChapterGenerationPlan> {
+    const override = this.settings.knowledgeTypeOverride;
+
+    if (!this.settings.autoDetectKnowledgeType || override !== "auto") {
+      return buildManualPlan(override === "auto" ? "conceptual" : override, depth);
+    }
+
+    const prompt = buildPlanningPrompt(
+      courseName,
+      chapterName,
+      this.settings.language,
+      depth,
+    );
+    const response = await this.callLLM(
+      prompt,
+      this.settings.modelChapter,
+      "You classify learning chapters. Return strict JSON only.",
+    );
+
+    return parsePlanningResponse(response, courseName, chapterName, depth);
   }
 
   async generateChapterContent(
@@ -266,6 +375,7 @@ export default class KnowledgePlugin extends Plugin {
     chapterInfo: [string, string],
     courseName: string,
     sem: Semaphore,
+    depth: KnowledgeDepth,
     onComplete?: (result: ChapterGenerationResult) => void,
   ): Promise<ChapterGenerationResult> {
     const [chapterNum, title] = chapterInfo;
@@ -273,7 +383,11 @@ export default class KnowledgePlugin extends Plugin {
     return await sem.run(async () => {
       let result: ChapterGenerationResult;
       try {
-        const chapterContent = await this.fetchChapterNote(courseName, title);
+        const chapterContent = await this.fetchChapterNote(
+          courseName,
+          title,
+          depth,
+        );
         const numStr = String(parseInt(chapterNum)).padStart(2, "0");
         const slug = slugifyTitle(title);
         const fileName = `${numStr}_${slug}.md`;
@@ -435,6 +549,7 @@ export default class KnowledgePlugin extends Plugin {
             chapterInfo,
             courseFolder.path,
             chapterSem,
+            DEFAULT_SETTINGS.knowledgeDepth,
             updateProgress,
           ),
         ),
@@ -465,7 +580,10 @@ export default class KnowledgePlugin extends Plugin {
     }
   }
 
-  async generate(courseName: string) {
+  async generate(
+    courseName: string,
+    depth: KnowledgeDepth = DEFAULT_SETTINGS.knowledgeDepth,
+  ) {
     if (!this.settings.apiKey) {
       new Notice("❌ API Key not set! Please configure it in settings.");
       return;
@@ -501,7 +619,8 @@ export default class KnowledgePlugin extends Plugin {
       }
 
       const headerText = getHeaderText(this.settings.language);
-      const outlineContent = `# ${courseName} ${headerText.outlineTitle}\n\n*${headerText.generatedAt}: ${new Date().toLocaleString()}*\n\n${outline}`;
+      const depthLabel = KNOWLEDGE_DEPTH_LABELS[depth];
+      const outlineContent = `# ${courseName} ${headerText.outlineTitle}\n\n*${headerText.generatedAt}: ${new Date().toLocaleString()}*\n\n*Chapter depth: ${depthLabel} (${depth})*\n\n${outline}`;
       const outlineFilePath = normalizePath(`${courseFolder.path}/Outlines.md`);
       const existingOutline = this.app.vault.getAbstractFileByPath(outlineFilePath);
 
@@ -547,6 +666,7 @@ export default class KnowledgePlugin extends Plugin {
           chapterInfo,
           courseName,
           chapterSem,
+          depth,
           updateChapterProgress,
         ),
       );

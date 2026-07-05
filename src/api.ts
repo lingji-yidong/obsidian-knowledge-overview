@@ -11,6 +11,18 @@ interface ChatCompletionResponse {
   }>;
 }
 
+export interface ChatCompletionOptions {
+  apiKey: string;
+  apiBaseUrl: string;
+  model: string;
+  userPrompt: string;
+  systemPrompt?: string;
+  maxCompletionTokens: number | null;
+  temperature: number | null;
+  reasoningEffort: "minimal" | "low" | "medium" | "high" | null;
+  verbosity: "low" | "medium" | "high" | null;
+}
+
 export class ApiError extends Error {
   status?: number;
 
@@ -49,6 +61,14 @@ export function buildChatCompletionsUrl(apiBaseUrl: string): string {
   const baseUrl = hasPath ? normalizedSlashes : `${normalizedSlashes}/v1`;
 
   return `${baseUrl}/chat/completions`;
+}
+
+function buildPromptWithSystem(userPrompt: string, systemPrompt?: string): string {
+  if (!systemPrompt) {
+    return userPrompt;
+  }
+
+  return `${systemPrompt}\n\n${userPrompt}`;
 }
 
 function isChatCompletionResponse(value: unknown): value is ChatCompletionResponse {
@@ -109,24 +129,57 @@ function extractChatCompletionContent(data: ChatCompletionResponse): string | nu
   return extractTextContent(firstChoice.text);
 }
 
-export async function callChatCompletion(
-  apiKey: string,
-  apiBaseUrl: string,
-  model: string,
-  prompt: string,
-  maxCompletionTokens: number | null,
+async function requestChatCompletion(
+  options: ChatCompletionOptions,
+  useSystemMessage: boolean,
+  includeOptionalFields: boolean,
 ): Promise<string> {
+  const {
+    apiKey,
+    apiBaseUrl,
+    model,
+    userPrompt,
+    systemPrompt,
+    maxCompletionTokens,
+    temperature,
+    reasoningEffort,
+    verbosity,
+  } = options;
+  const messages: Array<{ role: "system" | "user"; content: string }> =
+    useSystemMessage && systemPrompt
+      ? [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ]
+      : [{ role: "user", content: buildPromptWithSystem(userPrompt, systemPrompt) }];
   const body: {
     model: string;
-    messages: Array<{ role: "user"; content: string }>;
+    messages: Array<{ role: "system" | "user"; content: string }>;
     max_completion_tokens?: number;
+    temperature?: number;
+    reasoning_effort?: "minimal" | "low" | "medium" | "high";
+    verbosity?: "low" | "medium" | "high";
   } = {
     model,
-    messages: [{ role: "user", content: prompt }],
+    messages,
   };
 
   if (maxCompletionTokens !== null) {
     body.max_completion_tokens = maxCompletionTokens;
+  }
+
+  if (includeOptionalFields) {
+    if (temperature !== null) {
+      body.temperature = temperature;
+    }
+
+    if (reasoningEffort !== null) {
+      body.reasoning_effort = reasoningEffort;
+    }
+
+    if (verbosity !== null) {
+      body.verbosity = verbosity;
+    }
   }
 
   const res = await requestUrl({
@@ -158,4 +211,36 @@ export async function callChatCompletion(
   }
 
   return content;
+}
+
+export async function callChatCompletion(
+  options: ChatCompletionOptions,
+): Promise<string> {
+  const attempts: Array<{
+    useSystemMessage: boolean;
+    includeOptionalFields: boolean;
+  }> = [
+    { useSystemMessage: true, includeOptionalFields: true },
+    { useSystemMessage: true, includeOptionalFields: false },
+    { useSystemMessage: false, includeOptionalFields: false },
+  ];
+  let lastError: unknown;
+
+  for (const attempt of attempts) {
+    try {
+      return await requestChatCompletion(
+        options,
+        attempt.useSystemMessage,
+        attempt.includeOptionalFields,
+      );
+    } catch (error) {
+      lastError = error;
+      const status = error instanceof ApiError ? error.status : undefined;
+      if (status === undefined || status >= 500) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
 }
