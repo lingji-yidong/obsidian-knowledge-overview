@@ -3,7 +3,8 @@
 This framework generates fixed test chapters with the configured model. The
 generator is the system under test; it is not used to judge its own output.
 Local structural checks make no API calls, and a Codex agent can review the
-saved artifacts afterward.
+saved artifacts independently. The Node-only harness lives under `tests/` so
+it remains clearly separated from the mobile-compatible plugin source.
 
 ## Setup
 

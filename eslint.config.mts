@@ -24,7 +24,7 @@ export default defineConfig(
           allowDefaultProject: [
             "eslint.config.mts",
             "manifest.json",
-            "eval/run.mjs",
+            "tests/eval/run.mjs",
             "tests/release-notes.test.mjs",
             "tests/run-tests.mjs",
             "verify-release.mjs",
@@ -37,13 +37,7 @@ export default defineConfig(
   },
   ...obsidianmd.configs.recommended,
   {
-    rules: {
-      // Declarative settings require Obsidian 1.13; this plugin supports 1.12.7.
-      "obsidianmd/settings-tab/prefer-setting-definitions": "off",
-    },
-  },
-  {
-    files: ["tests/**/*", "eval/**/*", "verify-release.mjs"],
+    files: ["tests/**/*", "verify-release.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -55,7 +49,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["eval/**/*"],
+    files: ["tests/eval/**/*"],
     rules: {
       "no-restricted-globals": "off",
       "obsidianmd/prefer-window-timers": "off",

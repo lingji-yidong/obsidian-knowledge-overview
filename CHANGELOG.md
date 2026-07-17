@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.0.10
+
+- Move the Node-only generation evaluation harness under `tests/eval/` so
+  automated plugin scans do not treat test tooling as mobile runtime code.
+- Add Obsidian 1.13 searchable setting definitions while preserving the shared
+  legacy settings UI for Obsidian 1.12.7.
+- Remove remaining source and CSS compatibility warnings and verify that the
+  release bundle contains neither Node.js built-ins nor evaluation tooling.
+
 ## 0.0.9
 
 - Replace per-chapter model planning with one reusable course blueprint so the
@@ -52,7 +61,7 @@ All notable changes to this project will be documented in this file.
   while keeping QA source anchors as invisible, synchronized metadata.
 - Rewrite the README for end users, simplify provider URL and model ID setup,
   explain Gemini free-tier and high-demand limits, and move evaluation details
-  into `eval/README.md`.
+  into `tests/eval/README.md`.
 - Add an upfront billing warning that a complete GPT-5.6 Sol subject can cost
   around US$3 and clarify that concurrency does not reduce total spend.
 - Restore explicit Obsidian math-delimiter rules, normalize common unsupported

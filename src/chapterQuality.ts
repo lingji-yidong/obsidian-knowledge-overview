@@ -4,6 +4,7 @@ import type {
 } from "./instructionalTypes";
 
 const QA_SOURCE_PATTERN = /<!--\s*source:\s*([^>]+?)\s*-->/gi;
+const QA_SOURCE_VALUE_PATTERN = /^<!--\s*source:\s*([^>]+?)\s*-->$/i;
 const QA_SOURCE_TEST_PATTERN = /<!--\s*source:\s*[^>]+?\s*-->/i;
 const QA_SECTION_BOUNDARY_PATTERN =
   /^##\s+.+?<!--\s*qa-section\s*-->\s*$/i;
@@ -87,8 +88,8 @@ export function stripFencedCodeBlocks(text: string): string {
 }
 
 function hasHeadingDepthJump(text: string): boolean {
-  const levels = Array.from(text.matchAll(/^(#{2,4})\s+/gm)).map(
-    (match) => match[1].length,
+  const levels = (text.match(/^#{2,4}\s+/gm) ?? []).map(
+    (heading) => heading.search(/\s/u),
   );
 
   return levels.some(
@@ -98,10 +99,11 @@ function hasHeadingDepthJump(text: string): boolean {
 
 function collectHeadingTitles(text: string): Set<string> {
   return new Set(
-    Array.from(text.matchAll(/^##\s+(.+?)\s*$/gm))
-      .filter((match) => !/<!--\s*qa-section\s*-->/i.test(match[1]))
-      .map((match) =>
-        match[1]
+    (text.match(/^##\s+.+?\s*$/gm) ?? [])
+      .map((heading) => heading.replace(/^##\s+/u, ""))
+      .filter((title) => !/<!--\s*qa-section\s*-->/i.test(title))
+      .map((title) =>
+        title
           .replace(/<!--[^>]*-->/g, "")
           .trim()
           .toLocaleLowerCase(),
@@ -111,9 +113,16 @@ function collectHeadingTitles(text: string): Set<string> {
 
 function collectQaAnchors(text: string): string[] {
   const { content } = findQaSection(text);
-  return Array.from(content.matchAll(QA_SOURCE_PATTERN)).map((match) =>
-    match[1].trim().toLocaleLowerCase(),
-  );
+  const anchors: string[] = [];
+
+  for (const sourceMarker of content.match(QA_SOURCE_PATTERN) ?? []) {
+    const value = sourceMarker.match(QA_SOURCE_VALUE_PATTERN)?.[1];
+    if (value !== undefined) {
+      anchors.push(value.trim().toLocaleLowerCase());
+    }
+  }
+
+  return anchors;
 }
 
 export function evaluateChapterQuality(

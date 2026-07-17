@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   parseFailedChapterDepth,
   parseFailedChapters,
+  trimTrailingWhitespace,
 } from "../src/utils";
 
 void test("parses every supported knowledge depth from failure report metadata", () => {
@@ -39,4 +40,9 @@ void test("parses failed chapters when report includes depth frontmatter", () =>
     ["1", "First chapter"],
     ["12", "Final chapter"],
   ]);
+});
+
+void test("removes trailing whitespace without changing leading content", () => {
+  assert.equal(trimTrailingWhitespace("  chapter body \n\t"), "  chapter body");
+  assert.equal(trimTrailingWhitespace("chapter body"), "chapter body");
 });

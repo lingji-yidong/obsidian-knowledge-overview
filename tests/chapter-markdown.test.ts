@@ -35,3 +35,12 @@ void test("does not rewrite math delimiters shown as code", () => {
 
   assert.equal(normalizeObsidianMathDelimiters(content), content);
 });
+
+void test("preserves indentation around display math delimiters", () => {
+  const content = "\t  \\[\n  x + y\n\t  \\]";
+
+  assert.equal(
+    normalizeObsidianMathDelimiters(content),
+    "\t  $$\n  x + y\n\t  $$",
+  );
+});

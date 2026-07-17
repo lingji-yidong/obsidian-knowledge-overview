@@ -6,6 +6,19 @@ function readJson(path) {
 }
 
 const semanticVersionPattern = /^\d+\.\d+\.\d+$/;
+const nodeBuiltinImportPattern = /\b(?:require|import)\s*\(\s*["']node:/;
+
+function verifyMobileBundle() {
+  const bundle = fs.readFileSync("main.js", "utf8");
+
+  if (nodeBuiltinImportPattern.test(bundle)) {
+    throw new Error("main.js contains a Node.js built-in import");
+  }
+
+  if (bundle.includes("Evaluation plan (no requests sent)")) {
+    throw new Error("main.js unexpectedly contains the evaluation harness");
+  }
+}
 
 export function extractReleaseNotes(changelog, version) {
   const lines = changelog.split(/\r?\n/);
@@ -35,6 +48,7 @@ function verifyRelease(releaseVersion, releaseNotesPath) {
   const packageJson = readJson("package.json");
   const manifest = readJson("manifest.json");
   const versions = readJson("versions.json");
+  verifyMobileBundle();
 
   if (!semanticVersionPattern.test(packageJson.version)) {
     throw new Error(`Invalid package version: ${packageJson.version}`);

@@ -10,7 +10,7 @@ import type {
   ReasoningEffort,
   ThinkingMode,
   Verbosity,
-} from "../src/chatCompletion";
+} from "../../src/chatCompletion";
 
 export interface EvaluationSelection {
   corpus: EvaluationCorpus;
@@ -205,7 +205,7 @@ function assertCorpus(value: unknown): asserts value is EvaluationCorpus {
 
 /** Load the committed, reviewable evaluation corpus. */
 export function loadEvaluationCorpus(
-  filePath = resolve("eval/corpus/v1/manifest.json"),
+  filePath = resolve("tests/eval/corpus/v1/manifest.json"),
 ): EvaluationCorpus {
   const parsed: unknown = JSON.parse(readFileSync(filePath, "utf8"));
   assertCorpus(parsed);

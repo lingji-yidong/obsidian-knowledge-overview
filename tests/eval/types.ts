@@ -3,13 +3,13 @@ import type {
   ChapterSpec,
   CourseBlueprint,
   KnowledgeDepth,
-} from "../src/instructionalTypes";
-import type { GenerationProvenance } from "../src/generationProvenance";
+} from "../../src/instructionalTypes";
+import type { GenerationProvenance } from "../../src/generationProvenance";
 import type {
   ReasoningEffort,
   ThinkingMode,
   Verbosity,
-} from "../src/chatCompletion";
+} from "../../src/chatCompletion";
 
 export interface EvaluationCase {
   id: string;

@@ -42,7 +42,8 @@ export function normalizeObsidianMathDelimiters(content: string): string {
 
       const trimmed = line.trim();
       if (trimmed === "\\[" || trimmed === "\\]") {
-        const indentation = line.slice(0, line.length - line.trimStart().length);
+        const indentationEnd = line.search(/\S|$/u);
+        const indentation = line.slice(0, indentationEnd);
         return `${indentation}$$`;
       }
 

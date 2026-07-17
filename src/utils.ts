@@ -45,6 +45,11 @@ export function errorToMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Remove trailing whitespace without requiring newer String trim APIs. */
+export function trimTrailingWhitespace(value: string): string {
+  return value.replace(/\s+$/u, "");
+}
+
 export function slugifyTitle(title: string): string {
   const safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
   return safe.replace(/\s+/g, "_") || "chapter";

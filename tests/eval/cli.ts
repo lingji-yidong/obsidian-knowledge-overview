@@ -18,7 +18,7 @@ import type {
   ReasoningEffort,
   ThinkingMode,
   Verbosity,
-} from "../src/chatCompletion";
+} from "../../src/chatCompletion";
 
 type EvaluationCommand = "plan" | "generate" | "check";
 

@@ -8,5 +8,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["main.ts", "src/**/*.ts", "tests/**/*.ts", "eval/**/*.ts"]
+  "include": ["main.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

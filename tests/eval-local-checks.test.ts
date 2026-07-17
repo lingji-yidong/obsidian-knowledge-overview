@@ -4,8 +4,8 @@ import {
   STRUCTURAL_LENGTH_FLOOR_RATIO,
   evaluateLocalChapter,
   findRepeatedHeadingSkeletons,
-} from "../eval/localChecks";
-import type { EvaluationCase } from "../eval/types";
+} from "./eval/localChecks";
+import type { EvaluationCase } from "./eval/types";
 
 const CASE: EvaluationCase = {
   id: "test-case",

@@ -1,3 +1,5 @@
+import { trimTrailingWhitespace } from "./utils";
+
 export interface GenerationProvenance {
   model: string;
   promptTokens?: number;
@@ -113,5 +115,7 @@ export function stripGenerationProvenance(text: string): string {
   if (!commentMatch || commentMatch.index === undefined) return text;
 
   const separatorIndex = text.lastIndexOf("\n\n---\n\n*Model:", commentMatch.index);
-  return separatorIndex >= 0 ? text.slice(0, separatorIndex).trimEnd() : text;
+  return separatorIndex >= 0
+    ? trimTrailingWhitespace(text.slice(0, separatorIndex))
+    : text;
 }

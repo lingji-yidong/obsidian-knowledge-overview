@@ -235,8 +235,8 @@ npm run release:verify
 ```
 
 The live generation quality framework is documented in
-[eval/README.md](eval/README.md). It is separate from normal plugin use and
-requires an explicit request and token budget before it calls a model.
+[tests/eval/README.md](tests/eval/README.md). It is separate from normal plugin
+use and requires an explicit request and token budget before it calls a model.
 
 Release files:
 

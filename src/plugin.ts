@@ -74,6 +74,7 @@ import {
   parseFailedChapters,
   parseOptionalPositiveInteger,
   slugifyTitle,
+  trimTrailingWhitespace,
 } from "./utils";
 
 interface RunTelemetry {
@@ -580,7 +581,7 @@ export default class KnowledgePlugin extends Plugin {
       const filePath = normalizePath(`${courseFolder.path}/${fileName}`);
       const existing = this.app.vault.getAbstractFileByPath(filePath);
       const fullContent = [
-        `${header}${generated.content.trimEnd()}`,
+        `${header}${trimTrailingWhitespace(generated.content)}`,
         renderGenerationProvenance(generated.provenance),
         "",
       ].join("\n\n");

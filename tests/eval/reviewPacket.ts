@@ -70,7 +70,7 @@ export function buildAgentReviewPacket(
     "",
     "For every review question classify it as `explicit`, `derivable`, `unsupported`, or `ambiguous`. Positive classifications must cite the body section and a short exact excerpt. Treat a concept first introduced inside the question as unsupported.",
     "",
-    "Write `codex-review.json` using [the committed schema](../../CODEX_REVIEW_SCHEMA.md), plus a concise `codex-review.md` with release blockers and the strongest/weakest cases. The final aggregate must include separate STEM and humanities verdicts and a `go` or `no-go` recommendation.",
+    "Write `codex-review.json` using [the committed schema](../../../tests/eval/CODEX_REVIEW_SCHEMA.md), plus a concise `codex-review.md` with release blockers and the strongest/weakest cases. The final aggregate must include separate STEM and humanities verdicts and a `go` or `no-go` recommendation.",
     "",
   ].join("\n");
 }

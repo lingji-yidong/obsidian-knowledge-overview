@@ -454,6 +454,7 @@ async function callChatCompletion(options, controls = {}) {
 
 // src/chapterQuality.ts
 var QA_SOURCE_PATTERN = /<!--\s*source:\s*([^>]+?)\s*-->/gi;
+var QA_SOURCE_VALUE_PATTERN = /^<!--\s*source:\s*([^>]+?)\s*-->$/i;
 var QA_SOURCE_TEST_PATTERN = /<!--\s*source:\s*[^>]+?\s*-->/i;
 var QA_SECTION_BOUNDARY_PATTERN = /^##\s+.+?<!--\s*qa-section\s*-->\s*$/i;
 var ORDERED_ITEM_PATTERN = /^ {0,3}\d+[.)、]\s+/;
@@ -509,25 +510,33 @@ function stripFencedCodeBlocks(text) {
   return text.replace(/```[\s\S]*?```/g, "");
 }
 function hasHeadingDepthJump(text) {
-  const levels = Array.from(text.matchAll(/^(#{2,4})\s+/gm)).map(
-    (match) => match[1].length
+  var _a;
+  const levels = ((_a = text.match(/^#{2,4}\s+/gm)) != null ? _a : []).map(
+    (heading) => heading.search(/\s/u)
   );
   return levels.some(
     (level, index) => index > 0 && level > levels[index - 1] + 1
   );
 }
 function collectHeadingTitles(text) {
+  var _a;
   return new Set(
-    Array.from(text.matchAll(/^##\s+(.+?)\s*$/gm)).filter((match) => !/<!--\s*qa-section\s*-->/i.test(match[1])).map(
-      (match) => match[1].replace(/<!--[^>]*-->/g, "").trim().toLocaleLowerCase()
+    ((_a = text.match(/^##\s+.+?\s*$/gm)) != null ? _a : []).map((heading) => heading.replace(/^##\s+/u, "")).filter((title) => !/<!--\s*qa-section\s*-->/i.test(title)).map(
+      (title) => title.replace(/<!--[^>]*-->/g, "").trim().toLocaleLowerCase()
     )
   );
 }
 function collectQaAnchors(text) {
+  var _a, _b;
   const { content } = findQaSection(text);
-  return Array.from(content.matchAll(QA_SOURCE_PATTERN)).map(
-    (match) => match[1].trim().toLocaleLowerCase()
-  );
+  const anchors = [];
+  for (const sourceMarker of (_a = content.match(QA_SOURCE_PATTERN)) != null ? _a : []) {
+    const value = (_b = sourceMarker.match(QA_SOURCE_VALUE_PATTERN)) == null ? void 0 : _b[1];
+    if (value !== void 0) {
+      anchors.push(value.trim().toLocaleLowerCase());
+    }
+  }
+  return anchors;
 }
 function evaluateChapterQuality(text, density) {
   var _a, _b, _c, _d, _e, _f;
@@ -702,7 +711,8 @@ function normalizeObsidianMathDelimiters(content) {
     if (previousFence !== null || getMarkdownFenceMarker(line)) return line;
     const trimmed = line.trim();
     if (trimmed === "\\[" || trimmed === "\\]") {
-      const indentation = line.slice(0, line.length - line.trimStart().length);
+      const indentationEnd = line.search(/\S|$/u);
+      const indentation = line.slice(0, indentationEnd);
       return `${indentation}$$`;
     }
     return normalizeInlineMath(line);
@@ -1241,6 +1251,9 @@ function parseOptionalPositiveInteger(value) {
 }
 function errorToMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function trimTrailingWhitespace(value) {
+  return value.replace(/\s+$/u, "");
 }
 function slugifyTitle(title) {
   const safe = title.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
@@ -2778,139 +2791,227 @@ var SettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.containerEl.addClass("knowledge-settings");
   }
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass("knowledge-settings");
+  /**
+   * Describe settings for Obsidian 1.13 search while retaining the legacy
+   * display path for Obsidian 1.12.7. Both paths share these render callbacks.
+   */
+  getSettingDefinitions() {
     const settingDescriptions = getSettingDescriptionText(
       this.plugin.settings.language
     );
     const defaultLabel = getDefaultLabel(this.plugin.settings.language);
-    new import_obsidian3.Setting(containerEl).setName("API key").setDesc(settingDescriptions.apiKey).addText(
-      (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
-        this.plugin.settings.apiKey = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian3.Setting(containerEl).setName("API base URL").setDesc(
-      `${settingDescriptions.apiBaseUrl} ${defaultLabel}: ${DEFAULT_SETTINGS.apiBaseUrl}`
-    ).addText(
-      (text) => text.setValue(this.plugin.settings.apiBaseUrl).onChange(async (value) => {
-        this.plugin.settings.apiBaseUrl = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian3.Setting(containerEl).setName("Outline model").setDesc(settingDescriptions.outlineModel).addText(
-      (text) => text.setValue(this.plugin.settings.modelOutline).onChange(async (value) => {
-        this.plugin.settings.modelOutline = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian3.Setting(containerEl).setName("Chapter model").setDesc(settingDescriptions.chapterModel).addText(
-      (text) => text.setValue(this.plugin.settings.modelChapter).onChange(async (value) => {
-        this.plugin.settings.modelChapter = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian3.Setting(containerEl).setName("Knowledge type").setDesc(settingDescriptions.knowledgeType).addDropdown((dropdown) => {
-      Object.entries(KNOWLEDGE_TYPE_OPTIONS).forEach(([value, label]) => {
-        dropdown.addOption(value, label);
-      });
-      return dropdown.setValue(this.plugin.settings.knowledgeTypeOverride).onChange(async (value) => {
-        this.plugin.settings.knowledgeTypeOverride = value;
-        this.plugin.settings.autoDetectKnowledgeType = value === "auto";
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Minimum chapter characters").setDesc(settingDescriptions.minimumChapterCharacters).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = "1";
-      text.inputEl.step = "100";
-      return text.setPlaceholder(String(DEFAULT_SETTINGS.minChapterChars)).setValue(String(this.plugin.settings.minChapterChars)).onChange(async (value) => {
-        var _a;
-        this.plugin.settings.minChapterChars = (_a = parseOptionalPositiveInteger(value)) != null ? _a : DEFAULT_SETTINGS.minChapterChars;
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Max completion tokens").setDesc(settingDescriptions.maxCompletionTokens).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = "1";
-      text.inputEl.step = "1";
-      return text.setPlaceholder("None").setValue(
-        this.plugin.settings.maxCompletionTokens === null ? "" : String(this.plugin.settings.maxCompletionTokens)
-      ).onChange(async (value) => {
-        this.plugin.settings.maxCompletionTokens = parseOptionalPositiveInteger(value);
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Temperature").setDesc(settingDescriptions.temperature).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.step = "0.1";
-      return text.setPlaceholder("Omit").setValue(
-        this.plugin.settings.temperature === null ? "" : String(this.plugin.settings.temperature)
-      ).onChange(async (value) => {
-        this.plugin.settings.temperature = parseOptionalNumber(value);
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Reasoning effort").setDesc(settingDescriptions.reasoningEffort).addDropdown((dropdown) => {
-      var _a;
-      dropdown.addOption("", "Unset");
-      ["none", "minimal", "low", "medium", "high", "xhigh", "max"].forEach((value) => {
-        dropdown.addOption(value, value);
-      });
-      return dropdown.setValue((_a = this.plugin.settings.reasoningEffort) != null ? _a : "").onChange(async (value) => {
-        this.plugin.settings.reasoningEffort = value === "" ? null : value;
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Verbosity").setDesc(settingDescriptions.verbosity).addDropdown((dropdown) => {
-      var _a;
-      dropdown.addOption("", "Unset");
-      ["low", "medium", "high"].forEach((value) => {
-        dropdown.addOption(value, value);
-      });
-      return dropdown.setValue((_a = this.plugin.settings.verbosity) != null ? _a : "").onChange(async (value) => {
-        this.plugin.settings.verbosity = value === "" ? null : value;
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Thinking mode").setDesc(
-      "Auto omits the provider-specific toggle. Use enabled or disabled only when your provider documents support."
-    ).addDropdown((dropdown) => {
-      dropdown.addOption("auto", "Auto");
-      dropdown.addOption("enabled", "Enabled");
-      dropdown.addOption("disabled", "Disabled");
-      return dropdown.setValue(this.plugin.settings.thinkingMode).onChange(async (value) => {
-        this.plugin.settings.thinkingMode = value;
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Chapter concurrency").setDesc(settingDescriptions.chapterConcurrency).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = String(MIN_CONCURRENCY);
-      text.inputEl.max = String(MAX_CHAPTER_CONCURRENCY);
-      text.inputEl.step = "1";
-      return text.setPlaceholder(String(DEFAULT_SETTINGS.chapterConcurrency)).setValue(String(this.plugin.settings.chapterConcurrency)).onChange(async (value) => {
-        this.plugin.settings.chapterConcurrency = clampInteger(
-          Number(value),
-          MIN_CONCURRENCY,
-          MAX_CHAPTER_CONCURRENCY
-        );
-        await this.plugin.saveSettings();
-      });
-    });
-    new import_obsidian3.Setting(containerEl).setName("Language").setDesc(settingDescriptions.language).addDropdown((dropdown) => {
-      Object.entries(LANGUAGE_OPTIONS).forEach(([value, label]) => {
-        dropdown.addOption(value, label);
-      });
-      return dropdown.setValue(this.plugin.settings.language).onChange(async (v) => {
-        this.plugin.settings.language = v;
-        await this.plugin.saveSettings();
-        this.plugin.refreshLocalizedUi();
-      });
-    });
+    return [
+      {
+        name: "API key",
+        desc: settingDescriptions.apiKey,
+        render: (setting) => {
+          setting.addText(
+            (text) => text.setPlaceholder("API key").setValue(this.plugin.settings.apiKey).onChange(async (value) => {
+              this.plugin.settings.apiKey = value;
+              await this.plugin.saveSettings();
+            })
+          );
+        }
+      },
+      {
+        name: "API base URL",
+        desc: `${settingDescriptions.apiBaseUrl} ${defaultLabel}: ${DEFAULT_SETTINGS.apiBaseUrl}`,
+        render: (setting) => {
+          setting.addText(
+            (text) => text.setValue(this.plugin.settings.apiBaseUrl).onChange(async (value) => {
+              this.plugin.settings.apiBaseUrl = value;
+              await this.plugin.saveSettings();
+            })
+          );
+        }
+      },
+      {
+        name: "Outline model",
+        desc: settingDescriptions.outlineModel,
+        render: (setting) => {
+          setting.addText(
+            (text) => text.setValue(this.plugin.settings.modelOutline).onChange(async (value) => {
+              this.plugin.settings.modelOutline = value;
+              await this.plugin.saveSettings();
+            })
+          );
+        }
+      },
+      {
+        name: "Chapter model",
+        desc: settingDescriptions.chapterModel,
+        render: (setting) => {
+          setting.addText(
+            (text) => text.setValue(this.plugin.settings.modelChapter).onChange(async (value) => {
+              this.plugin.settings.modelChapter = value;
+              await this.plugin.saveSettings();
+            })
+          );
+        }
+      },
+      {
+        name: "Knowledge type",
+        desc: settingDescriptions.knowledgeType,
+        render: (setting) => {
+          setting.addDropdown((dropdown) => {
+            Object.entries(KNOWLEDGE_TYPE_OPTIONS).forEach(([value, label]) => {
+              dropdown.addOption(value, label);
+            });
+            return dropdown.setValue(this.plugin.settings.knowledgeTypeOverride).onChange(async (value) => {
+              this.plugin.settings.knowledgeTypeOverride = value;
+              this.plugin.settings.autoDetectKnowledgeType = value === "auto";
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Minimum chapter characters",
+        desc: settingDescriptions.minimumChapterCharacters,
+        render: (setting) => {
+          setting.addText((text) => {
+            text.inputEl.type = "number";
+            text.inputEl.min = "1";
+            text.inputEl.step = "100";
+            return text.setPlaceholder(String(DEFAULT_SETTINGS.minChapterChars)).setValue(String(this.plugin.settings.minChapterChars)).onChange(async (value) => {
+              var _a;
+              this.plugin.settings.minChapterChars = (_a = parseOptionalPositiveInteger(value)) != null ? _a : DEFAULT_SETTINGS.minChapterChars;
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Max completion tokens",
+        desc: settingDescriptions.maxCompletionTokens,
+        render: (setting) => {
+          setting.addText((text) => {
+            text.inputEl.type = "number";
+            text.inputEl.min = "1";
+            text.inputEl.step = "1";
+            return text.setPlaceholder("None").setValue(
+              this.plugin.settings.maxCompletionTokens === null ? "" : String(this.plugin.settings.maxCompletionTokens)
+            ).onChange(async (value) => {
+              this.plugin.settings.maxCompletionTokens = parseOptionalPositiveInteger(value);
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Temperature",
+        desc: settingDescriptions.temperature,
+        render: (setting) => {
+          setting.addText((text) => {
+            text.inputEl.type = "number";
+            text.inputEl.step = "0.1";
+            return text.setPlaceholder("Omit").setValue(
+              this.plugin.settings.temperature === null ? "" : String(this.plugin.settings.temperature)
+            ).onChange(async (value) => {
+              this.plugin.settings.temperature = parseOptionalNumber(value);
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Reasoning effort",
+        desc: settingDescriptions.reasoningEffort,
+        render: (setting) => {
+          setting.addDropdown((dropdown) => {
+            var _a;
+            dropdown.addOption("", "Unset");
+            ["none", "minimal", "low", "medium", "high", "xhigh", "max"].forEach(
+              (value) => {
+                dropdown.addOption(value, value);
+              }
+            );
+            return dropdown.setValue((_a = this.plugin.settings.reasoningEffort) != null ? _a : "").onChange(async (value) => {
+              this.plugin.settings.reasoningEffort = value === "" ? null : value;
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Verbosity",
+        desc: settingDescriptions.verbosity,
+        render: (setting) => {
+          setting.addDropdown((dropdown) => {
+            var _a;
+            dropdown.addOption("", "Unset");
+            ["low", "medium", "high"].forEach((value) => {
+              dropdown.addOption(value, value);
+            });
+            return dropdown.setValue((_a = this.plugin.settings.verbosity) != null ? _a : "").onChange(async (value) => {
+              this.plugin.settings.verbosity = value === "" ? null : value;
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Thinking mode",
+        desc: "Auto omits the provider-specific toggle. Use enabled or disabled only when your provider documents support.",
+        render: (setting) => {
+          setting.addDropdown((dropdown) => {
+            dropdown.addOption("auto", "Auto");
+            dropdown.addOption("enabled", "Enabled");
+            dropdown.addOption("disabled", "Disabled");
+            return dropdown.setValue(this.plugin.settings.thinkingMode).onChange(async (value) => {
+              this.plugin.settings.thinkingMode = value;
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Chapter concurrency",
+        desc: settingDescriptions.chapterConcurrency,
+        render: (setting) => {
+          setting.addText((text) => {
+            text.inputEl.type = "number";
+            text.inputEl.min = String(MIN_CONCURRENCY);
+            text.inputEl.max = String(MAX_CHAPTER_CONCURRENCY);
+            text.inputEl.step = "1";
+            return text.setPlaceholder(String(DEFAULT_SETTINGS.chapterConcurrency)).setValue(String(this.plugin.settings.chapterConcurrency)).onChange(async (value) => {
+              this.plugin.settings.chapterConcurrency = clampInteger(
+                Number(value),
+                MIN_CONCURRENCY,
+                MAX_CHAPTER_CONCURRENCY
+              );
+              await this.plugin.saveSettings();
+            });
+          });
+        }
+      },
+      {
+        name: "Language",
+        desc: settingDescriptions.language,
+        render: (setting) => {
+          setting.addDropdown((dropdown) => {
+            Object.entries(LANGUAGE_OPTIONS).forEach(([value, label]) => {
+              dropdown.addOption(value, label);
+            });
+            return dropdown.setValue(this.plugin.settings.language).onChange(async (value) => {
+              this.plugin.settings.language = value;
+              await this.plugin.saveSettings();
+              this.plugin.refreshLocalizedUi();
+            });
+          });
+        }
+      }
+    ];
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    for (const definition of this.getSettingDefinitions()) {
+      const setting = new import_obsidian3.Setting(containerEl).setName(definition.name).setDesc(definition.desc);
+      definition.render(setting);
+    }
   }
 };
 
@@ -3307,7 +3408,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
       const filePath = (0, import_obsidian4.normalizePath)(`${courseFolder.path}/${fileName}`);
       const existing = this.app.vault.getAbstractFileByPath(filePath);
       const fullContent = [
-        `${header}${generated.content.trimEnd()}`,
+        `${header}${trimTrailingWhitespace(generated.content)}`,
         renderGenerationProvenance(generated.provenance),
         ""
       ].join("\n\n");

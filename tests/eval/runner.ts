@@ -13,26 +13,26 @@ import {
   executeChatCompletion,
   type ChatHttpResponse,
   type ChatRequestEvent,
-} from "../src/chatCompletion";
-import { DENSITY_PRESETS } from "../src/densityPresets";
+} from "../../src/chatCompletion";
+import { DENSITY_PRESETS } from "../../src/densityPresets";
 import {
   normalizeGenerationProvenance,
   renderGenerationProvenance,
   stripGenerationProvenance,
   type GenerationProvenance,
-} from "../src/generationProvenance";
-import { numberChapterHeadings } from "../src/chapter-numbering";
+} from "../../src/generationProvenance";
+import { numberChapterHeadings } from "../../src/chapter-numbering";
 import {
   buildBlueprintPlan,
   selectAdapter,
-} from "../src/instructionalPlanner";
-import type { ChapterContext, ChapterSpec } from "../src/instructionalTypes";
+} from "../../src/instructionalPlanner";
+import type { ChapterContext, ChapterSpec } from "../../src/instructionalTypes";
 import {
   buildChapterPrompt,
   buildInstructionalSystemPrompt,
-} from "../src/prompts";
-import { buildChatCompletionsUrl } from "../src/requestUrl";
-import { errorToMessage } from "../src/utils";
+} from "../../src/prompts";
+import { buildChatCompletionsUrl } from "../../src/requestUrl";
+import { errorToMessage } from "../../src/utils";
 import type { EvaluationPlan, EvaluationSelection } from "./config";
 import {
   evaluateLocalChapter,

@@ -5,13 +5,13 @@ import {
   loadEvaluationCorpus,
   selectEvaluationCases,
   validateLivePlan,
-} from "../eval/config";
+} from "./eval/config";
 import {
   countPreparedPromptBytes,
   fingerprintPreparedPrompts,
   prepareEvaluationCases,
-} from "../eval/runner";
-import type { EvaluationConfig } from "../eval/types";
+} from "./eval/runner";
+import type { EvaluationConfig } from "./eval/types";
 
 const CONFIG: EvaluationConfig = {
   apiBaseUrl: "https://example.test/v1",

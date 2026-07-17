@@ -2,10 +2,10 @@ import {
   evaluateChapterQuality,
   getChapterQualityWarnings,
   stripFencedCodeBlocks,
-} from "../src/chapterQuality";
-import { stripChapterSectionNumber } from "../src/chapter-numbering";
-import { normalizeObsidianMathDelimiters } from "../src/chapter-markdown";
-import { DENSITY_PRESETS } from "../src/densityPresets";
+} from "../../src/chapterQuality";
+import { stripChapterSectionNumber } from "../../src/chapter-numbering";
+import { normalizeObsidianMathDelimiters } from "../../src/chapter-markdown";
+import { DENSITY_PRESETS } from "../../src/densityPresets";
 import type { EvaluationCase, LocalChapterMetrics } from "./types";
 
 export const STRUCTURAL_LENGTH_FLOOR_RATIO = 0.8;
