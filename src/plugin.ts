@@ -7,54 +7,106 @@ import {
   normalizePath,
   setTooltip,
 } from "obsidian";
-import { ApiError, callChatCompletion, isRetryableStatus } from "./api";
+import {
+  GenerationCancelledError,
+  callChatCompletion,
+  type ChatRequestEvent,
+} from "./api";
 import {
   evaluateChapterQuality,
-  formatQualityReport,
-  shouldRepairChapter,
+  getChapterQualityWarnings,
 } from "./chapterQuality";
+import { numberChapterHeadings } from "./chapter-numbering";
+import { normalizeObsidianMathDelimiters } from "./chapter-markdown";
+import {
+  MAX_BLUEPRINT_CHAPTERS,
+  buildFallbackChapterSpec,
+  parseBlueprintComment,
+  parseCourseBlueprint,
+  renderCourseOutline,
+  resolveBlueprintMaxCompletionTokens,
+  serializeBlueprintComment,
+} from "./courseBlueprint";
 import {
   applyMinimumChapterChars,
   DENSITY_PRESETS,
   KNOWLEDGE_DEPTH_LABELS,
 } from "./densityPresets";
+import {
+  GenerationCancellation,
+  LogicalRequestBudget,
+} from "./generationControl";
+import {
+  renderGenerationProvenance,
+  type GenerationProvenance,
+} from "./generationProvenance";
 import { getHeaderText, getUiText, type UiText } from "./i18n";
 import {
+  buildBlueprintPlan,
   buildManualPlan,
-  buildPlanningPrompt,
-  parsePlanningResponse,
   selectAdapter,
 } from "./instructionalPlanner";
-import type { ChapterGenerationPlan, KnowledgeDepth } from "./instructionalTypes";
+import type {
+  ChapterContext,
+  ChapterSpec,
+  CourseBlueprint,
+  KnowledgeDepth,
+} from "./instructionalTypes";
 import { InputModal, ResumeFailedModal } from "./modals";
 import {
   buildChapterPrompt,
-  buildChapterRepairPrompt,
   buildInstructionalSystemPrompt,
   buildOutlinePrompt,
 } from "./prompts";
-import { normalizeKnownMarkdownHeadings } from "./sectionHeadings";
 import { SettingTab } from "./settings-tab";
 import {
   DEFAULT_SETTINGS,
-  MAX_API_RETRIES,
   MAX_CHAPTER_CONCURRENCY,
   MIN_CONCURRENCY,
-  RETRY_BASE_DELAY_MS,
   type MySettings,
 } from "./settings";
 import {
-  ChapterGenerationResult,
+  type ChapterGenerationResult,
   Semaphore,
   clampInteger,
   errorToMessage,
-  parseChapterTitles,
   parseFailedChapterDepth,
   parseFailedChapters,
   parseOptionalPositiveInteger,
-  sleep,
   slugifyTitle,
 } from "./utils";
+
+interface RunTelemetry {
+  logicalRequests: number;
+  physicalRequests: number;
+  retries: number;
+  compatibilityFallbacks: number;
+  promptChars: number;
+  outputChars: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+interface GenerationRun {
+  id: string;
+  kind: "generate" | "resume";
+  config: Readonly<MySettings>;
+  cancellation: GenerationCancellation;
+  requestBudget: LogicalRequestBudget;
+  requestSemaphore: Semaphore;
+  telemetry: RunTelemetry;
+  currentPercent: number;
+}
+
+interface GeneratedChapter {
+  content: string;
+  qualityWarnings: string[];
+  provenance: GenerationProvenance;
+}
+
+interface LlmCompletion extends GenerationProvenance {
+  content: string;
+}
 
 export default class KnowledgePlugin extends Plugin {
   settings!: MySettings;
@@ -65,8 +117,11 @@ export default class KnowledgePlugin extends Plugin {
   private generateRibbonIcon?: HTMLElement;
   private resumeRibbonIcon?: HTMLElement;
   private commandsRegistered = false;
+  private activeRun?: GenerationRun;
+  private progressRunId?: string;
+  private progressHideTimer?: number;
 
-  async onload() {
+  async onload(): Promise<void> {
     await this.loadSettings();
     this.setupProgressStatus();
     const uiText = getUiText(this.settings.language);
@@ -94,7 +149,15 @@ export default class KnowledgePlugin extends Plugin {
     this.addSettingTab(new SettingTab(this.app, this));
   }
 
-  async loadSettings() {
+  onunload(): void {
+    this.activeRun?.cancellation.cancel();
+    if (this.progressHideTimer !== undefined) {
+      window.clearTimeout(this.progressHideTimer);
+    }
+    this.progressNotice?.hide();
+  }
+
+  async loadSettings(): Promise<void> {
     const loadedSettings = (await this.loadData()) as Partial<MySettings> | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings ?? {});
     this.settings.chapterConcurrency = clampInteger(
@@ -108,9 +171,16 @@ export default class KnowledgePlugin extends Plugin {
     this.settings.minChapterChars =
       parseOptionalPositiveInteger(this.settings.minChapterChars) ??
       DEFAULT_SETTINGS.minChapterChars;
+    if (
+      this.settings.thinkingMode !== "auto" &&
+      this.settings.thinkingMode !== "enabled" &&
+      this.settings.thinkingMode !== "disabled"
+    ) {
+      this.settings.thinkingMode = DEFAULT_SETTINGS.thinkingMode;
+    }
   }
 
-  async saveSettings() {
+  async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
   }
 
@@ -125,6 +195,7 @@ export default class KnowledgePlugin extends Plugin {
     if (this.commandsRegistered) {
       this.removeCommand("generate-knowledge");
       this.removeCommand("resume-failed-chapters");
+      this.removeCommand("cancel-knowledge-generation");
     }
 
     this.addCommand({
@@ -145,6 +216,13 @@ export default class KnowledgePlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "cancel-knowledge-generation",
+      name: uiText.cancelActiveGeneration,
+      icon: "circle-stop",
+      callback: () => this.cancelActiveGeneration(),
+    });
+
     this.commandsRegistered = true;
   }
 
@@ -152,9 +230,7 @@ export default class KnowledgePlugin extends Plugin {
     ribbonIcon: HTMLElement | undefined,
     label: string,
   ): void {
-    if (!ribbonIcon) {
-      return;
-    }
+    if (!ribbonIcon) return;
 
     setTooltip(ribbonIcon, label, { placement: "right" });
     ribbonIcon.setAttr("aria-label", label);
@@ -162,8 +238,7 @@ export default class KnowledgePlugin extends Plugin {
   }
 
   getActiveCourseName(): string {
-    const activeFile = this.app.workspace.getActiveFile();
-    return activeFile?.parent?.path ?? "";
+    return this.app.workspace.getActiveFile()?.parent?.path ?? "";
   }
 
   setupProgressStatus(): void {
@@ -177,20 +252,24 @@ export default class KnowledgePlugin extends Plugin {
     this.progressLabelEl = this.progressStatusEl.createSpan({
       cls: "knowledge-progress-label",
     });
-
     const track = this.progressStatusEl.createDiv({
       cls: "knowledge-progress-track",
     });
     this.progressFillEl = track.createDiv({
       cls: "knowledge-progress-fill",
     });
-
     this.hideProgress();
   }
 
-  showProgress(label: string, percent: number): void {
+  showProgress(label: string, percent: number, runId?: string): void {
+    if (runId && this.progressRunId !== runId) return;
+
     const safePercent = clampInteger(percent, 0, 100);
     const message = `${label} (${safePercent}%)`;
+    const activeRun = this.activeRun;
+    if (activeRun && activeRun.id === runId) {
+      activeRun.currentPercent = safePercent;
+    }
 
     if (this.progressStatusEl && this.progressLabelEl && this.progressFillEl) {
       this.progressStatusEl.removeClass("knowledge-progress-hidden");
@@ -208,238 +287,359 @@ export default class KnowledgePlugin extends Plugin {
     }
   }
 
-  hideProgress(): void {
+  hideProgress(runId?: string): void {
+    if (runId && this.progressRunId !== runId) return;
+
     this.progressStatusEl?.addClass("knowledge-progress-hidden");
-    if (this.progressFillEl) {
-      this.progressFillEl.setCssProps({
-        "--knowledge-progress-width": "0%",
-      });
-    }
+    this.progressFillEl?.setCssProps({
+      "--knowledge-progress-width": "0%",
+    });
     this.progressNotice?.hide();
     this.progressNotice = undefined;
   }
 
-  finishProgress(label: string): void {
-    this.showProgress(label, 100);
-    window.setTimeout(() => this.hideProgress(), 5000);
+  finishProgress(label: string, runId: string): void {
+    this.showProgress(label, 100, runId);
+    if (this.progressHideTimer !== undefined) {
+      window.clearTimeout(this.progressHideTimer);
+    }
+    this.progressHideTimer = window.setTimeout(
+      () => this.hideProgress(runId),
+      5000,
+    );
   }
 
-  async callLLM(
+  cancelActiveGeneration(): void {
+    if (!this.activeRun) {
+      new Notice("No active knowledge generation to cancel");
+      return;
+    }
+
+    this.activeRun.cancellation.cancel();
+    this.showProgress(
+      "Cancelling after active requests finish",
+      this.activeRun.currentPercent,
+      this.activeRun.id,
+    );
+    new Notice("Cancellation requested; queued requests will not start");
+  }
+
+  private startRun(
+    kind: GenerationRun["kind"],
+    maxLogicalRequests: number,
+  ): GenerationRun | null {
+    if (this.activeRun) {
+      new Notice(
+        "Another knowledge generation is already active. Cancel it before starting a new one.",
+        7000,
+      );
+      return null;
+    }
+
+    const config = Object.freeze({ ...this.settings });
+    const run: GenerationRun = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind,
+      config,
+      cancellation: new GenerationCancellation(),
+      requestBudget: new LogicalRequestBudget(maxLogicalRequests),
+      requestSemaphore: new Semaphore(config.chapterConcurrency),
+      telemetry: {
+        logicalRequests: 0,
+        physicalRequests: 0,
+        retries: 0,
+        compatibilityFallbacks: 0,
+        promptChars: 0,
+        outputChars: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+      },
+      currentPercent: 0,
+    };
+
+    if (this.progressHideTimer !== undefined) {
+      window.clearTimeout(this.progressHideTimer);
+      this.progressHideTimer = undefined;
+    }
+    this.activeRun = run;
+    this.progressRunId = run.id;
+    return run;
+  }
+
+  private endRun(run: GenerationRun): void {
+    new Notice(
+      `Requests: ${run.telemetry.logicalRequests} logical, ${run.telemetry.physicalRequests} HTTP, ${run.telemetry.retries} retries`,
+      6000,
+    );
+    if (this.activeRun?.id === run.id) {
+      this.activeRun = undefined;
+    }
+  }
+
+  private handleRequestEvent(run: GenerationRun, event: ChatRequestEvent): void {
+    if (event.kind === "request") {
+      run.telemetry.physicalRequests += 1;
+      run.telemetry.promptChars += event.promptChars ?? 0;
+    } else if (event.kind === "success") {
+      run.telemetry.outputChars += event.outputChars ?? 0;
+      run.telemetry.promptTokens += event.promptTokens ?? 0;
+      run.telemetry.completionTokens += event.completionTokens ?? 0;
+    } else if (event.kind === "retry") {
+      run.telemetry.retries += 1;
+      this.showProgress(
+        `Provider retry queued in ${event.delayMs ?? 0} ms`,
+        run.currentPercent,
+        run.id,
+      );
+    } else if (event.kind === "compatibility") {
+      run.telemetry.compatibilityFallbacks += 1;
+    }
+  }
+
+  private async callLLM(
     prompt: string,
     model: string,
+    run: GenerationRun,
     systemPrompt?: string,
-  ): Promise<string> {
-    let lastError: unknown;
+    maxCompletionTokens = run.config.maxCompletionTokens,
+  ): Promise<LlmCompletion> {
+    run.cancellation.throwIfCancelled();
+    run.requestBudget.consume();
+    run.telemetry.logicalRequests += 1;
 
-    for (let attempt = 0; attempt <= MAX_API_RETRIES; attempt++) {
-      try {
-        return await callChatCompletion({
-          apiKey: this.settings.apiKey,
-          apiBaseUrl: this.settings.apiBaseUrl,
-          model,
-          userPrompt: prompt,
-          systemPrompt,
-          maxCompletionTokens: this.settings.maxCompletionTokens,
-          temperature: this.settings.temperature,
-          reasoningEffort: this.settings.reasoningEffort,
-          verbosity: this.settings.verbosity,
-        });
-      } catch (error) {
-        lastError = error;
-        const isLastAttempt = attempt === MAX_API_RETRIES;
-        const status = error instanceof ApiError ? error.status : undefined;
-        const retryable = status === undefined || isRetryableStatus(status);
+    let provenance: GenerationProvenance = { model };
 
-        if (isLastAttempt || !retryable) {
-          throw error;
-        }
-
-        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-        this.showProgress(`Retrying API request ${attempt + 1}/${MAX_API_RETRIES}`, 10);
-        await sleep(delay);
-      }
-    }
-
-    throw lastError;
-  }
-
-  async fetchOutline(courseName: string): Promise<string> {
-    try {
-      const prompt = buildOutlinePrompt(courseName, this.settings.language);
-      return await this.callLLM(prompt, this.settings.modelOutline);
-    } catch (error) {
-      console.error(`Error fetching outline for ${courseName}:`, error);
-      throw error;
-    }
-  }
-
-  async fetchChapterNote(
-    courseName: string,
-    chapterName: string,
-    depth: KnowledgeDepth,
-  ): Promise<string> {
-    try {
-      const density = applyMinimumChapterChars(
-        DENSITY_PRESETS[depth],
-        this.settings.minChapterChars,
-      );
-      const plan = await this.planChapter(courseName, chapterName, depth);
-      const adapter = selectAdapter(plan);
-      const systemPrompt = buildInstructionalSystemPrompt();
-      const prompt = buildChapterPrompt({
-        courseName,
-        chapterName,
-        language: this.settings.language,
-        depth,
-        plan,
-        adapter,
-        density,
-      });
-      let chapter = await this.callLLM(
-        prompt,
-        this.settings.modelChapter,
+    const content = await callChatCompletion(
+      {
+        apiKey: run.config.apiKey,
+        apiBaseUrl: run.config.apiBaseUrl,
+        model,
+        userPrompt: prompt,
         systemPrompt,
-      );
-      chapter = normalizeKnownMarkdownHeadings(
-        chapter,
-        this.settings.language,
-      );
-      const qualityReport = evaluateChapterQuality(chapter, density, adapter);
+        maxCompletionTokens,
+        temperature: run.config.temperature,
+        reasoningEffort: run.config.reasoningEffort,
+        verbosity: run.config.verbosity,
+        thinkingMode: run.config.thinkingMode,
+      },
+      {
+        shouldCancel: () => run.cancellation.isCancelled,
+        scheduleRequest: (request) =>
+          run.requestSemaphore.run(async () => {
+            run.cancellation.throwIfCancelled();
+            const stalledTimer = window.setTimeout(() => {
+              this.showProgress(
+                "Provider request is still running",
+                run.currentPercent,
+                run.id,
+              );
+            }, 60000);
+            try {
+              return await request();
+            } finally {
+              window.clearTimeout(stalledTimer);
+            }
+          }),
+        onEvent: (event) => {
+          this.handleRequestEvent(run, event);
+          if (event.kind === "success") {
+            provenance = {
+              model: event.model ?? model,
+              promptTokens: event.promptTokens,
+              completionTokens: event.completionTokens,
+              totalTokens: event.totalTokens,
+              reasoningTokens: event.reasoningTokens,
+            };
+          }
+        },
+      },
+    );
 
-      if (
-        this.settings.autoExpandShortChapters &&
-        shouldRepairChapter(qualityReport)
-      ) {
-        const repairPrompt = buildChapterRepairPrompt({
-          courseName,
-          chapterName,
-          language: this.settings.language,
-          density,
-          plan,
-          adapter,
-          qualityReport,
-          formattedQualityReport: formatQualityReport(qualityReport),
-          existingChapter: chapter,
-        });
-        chapter = await this.callLLM(
-          repairPrompt,
-          this.settings.modelChapter,
-          systemPrompt,
-        );
-        chapter = normalizeKnownMarkdownHeadings(
-          chapter,
-          this.settings.language,
-        );
-      }
-
-      return chapter;
-    } catch (error) {
-      console.error(`Error fetching chapter note for ${chapterName}:`, error);
-      throw error;
-    }
+    return { content, ...provenance };
   }
 
-  async planChapter(
+  private async fetchCourseBlueprint(
     courseName: string,
-    chapterName: string,
     depth: KnowledgeDepth,
-  ): Promise<ChapterGenerationPlan> {
-    const override = this.settings.knowledgeTypeOverride;
-
-    if (!this.settings.autoDetectKnowledgeType || override !== "auto") {
-      return buildManualPlan(override === "auto" ? "conceptual" : override, depth);
-    }
-
-    const prompt = buildPlanningPrompt(
-      courseName,
-      chapterName,
-      this.settings.language,
-      depth,
+    run: GenerationRun,
+  ): Promise<CourseBlueprint> {
+    const prompt = buildOutlinePrompt(courseName, run.config.language, depth);
+    const outlineMaxTokens = resolveBlueprintMaxCompletionTokens(
+      run.config.maxCompletionTokens,
     );
     const response = await this.callLLM(
       prompt,
-      this.settings.modelChapter,
-      "You classify learning chapters. Return strict JSON only.",
+      run.config.modelOutline,
+      run,
+      "You design coherent course blueprints. Return strict JSON only.",
+      outlineMaxTokens,
     );
-
-    return parsePlanningResponse(response, courseName, chapterName, depth);
-  }
-
-  async generateChapterContent(
-    courseFolder: TFolder,
-    chapterInfo: [string, string],
-    courseName: string,
-    sem: Semaphore,
-    depth: KnowledgeDepth,
-    onComplete?: (result: ChapterGenerationResult) => void,
-  ): Promise<ChapterGenerationResult> {
-    const [chapterNum, title] = chapterInfo;
-
-    return await sem.run(async () => {
-      let result: ChapterGenerationResult;
-      try {
-        const chapterContent = await this.fetchChapterNote(
-          courseName,
-          title,
-          depth,
-        );
-        const numStr = String(parseInt(chapterNum)).padStart(2, "0");
-        const slug = slugifyTitle(title);
-        const fileName = `${numStr}_${slug}.md`;
-        const headerText = getHeaderText(this.settings.language);
-        const header = `# ${title}\n\n*${headerText.chapterNumber}: ${chapterNum}*\n\n*${headerText.generated}*\n\n---\n\n`;
-        const fullContent = header + chapterContent;
-        const filePath = normalizePath(`${courseFolder.path}/${fileName}`);
-        const existing = this.app.vault.getAbstractFileByPath(filePath);
-
-        if (existing instanceof TFile) {
-          await this.app.vault.modify(existing, fullContent);
-        } else if (existing) {
-          throw new Error(`Path "${filePath}" exists and is not a file`);
-        } else {
-          await this.app.vault.create(filePath, fullContent);
-        }
-
-        new Notice(`✓ ${fileName}`);
-        result = {
-          chapterNum,
-          title,
-          fileName,
-          success: true,
-        };
-      } catch (error) {
-        const errorMsg = errorToMessage(error);
-        new Notice(
-          `✗ Error generating chapter ${chapterNum}: ${errorMsg}`,
-          5000,
-        );
-        console.error(
-          `Error generating chapter ${chapterNum} (${title}):`,
-          error,
-        );
-        result = {
-          chapterNum,
-          title,
-          success: false,
-          error: errorMsg,
-        };
-      } finally {
-        onComplete?.(result!);
-      }
-
-      return result!;
+    return parseCourseBlueprint(response.content, courseName, depth, {
+      enforceMinimumChapters: true,
     });
   }
 
-  async writeFailureReport(
+  private async fetchChapterNote(
+    context: ChapterContext,
+    depth: KnowledgeDepth,
+    run: GenerationRun,
+  ): Promise<GeneratedChapter> {
+    const density = applyMinimumChapterChars(
+      DENSITY_PRESETS[depth],
+      run.config.minChapterChars,
+    );
+    const override = run.config.knowledgeTypeOverride;
+    const plan =
+      !run.config.autoDetectKnowledgeType || override !== "auto"
+        ? buildManualPlan(
+            override === "auto" ? "conceptual" : override,
+            depth,
+          )
+        : buildBlueprintPlan(
+            context.chapter.knowledgeType,
+            context.chapter.secondaryKnowledgeTypes,
+            depth,
+          );
+    const adapter = selectAdapter(plan);
+    const prompt = buildChapterPrompt({
+      context,
+      language: run.config.language,
+      depth,
+      plan,
+      adapter,
+      density,
+    });
+    const completion = await this.callLLM(
+      prompt,
+      run.config.modelChapter,
+      run,
+      buildInstructionalSystemPrompt(),
+    );
+    const normalizedContent = normalizeObsidianMathDelimiters(
+      completion.content,
+    );
+    const numberedContent = numberChapterHeadings(
+      normalizedContent,
+      context.chapter.chapterNumber,
+    );
+    const qualityReport = evaluateChapterQuality(numberedContent, density);
+
+    return {
+      content: numberedContent,
+      qualityWarnings: getChapterQualityWarnings(qualityReport),
+      provenance: {
+        model: completion.model,
+        promptTokens: completion.promptTokens,
+        completionTokens: completion.completionTokens,
+        totalTokens: completion.totalTokens,
+        reasoningTokens: completion.reasoningTokens,
+      },
+    };
+  }
+
+  private buildChapterContext(
+    blueprint: CourseBlueprint,
+    chapter: ChapterSpec,
+  ): ChapterContext {
+    const index = blueprint.chapters.findIndex(
+      (candidate) =>
+        candidate.chapterNumber === chapter.chapterNumber ||
+        candidate.title === chapter.title,
+    );
+
+    return {
+      blueprint,
+      chapter,
+      previousChapter: index > 0 ? blueprint.chapters[index - 1] : undefined,
+      nextChapter:
+        index >= 0 && index < blueprint.chapters.length - 1
+          ? blueprint.chapters[index + 1]
+          : undefined,
+    };
+  }
+
+  private async generateChapterContent(
+    courseFolder: TFolder,
+    context: ChapterContext,
+    run: GenerationRun,
+    depth: KnowledgeDepth,
+    onComplete?: (result: ChapterGenerationResult) => void,
+  ): Promise<ChapterGenerationResult> {
+    const { chapter } = context;
+    let result: ChapterGenerationResult;
+
+    try {
+      const generated = await this.fetchChapterNote(context, depth, run);
+      const numStr = String(Number.parseInt(chapter.chapterNumber, 10)).padStart(
+        2,
+        "0",
+      );
+      const fileName = `${numStr}_${slugifyTitle(chapter.title)}.md`;
+      const headerText = getHeaderText(run.config.language);
+      const header = `# ${chapter.title}\n\n*${headerText.chapterNumber}: ${chapter.chapterNumber}*\n\n*${headerText.generated}*\n\n---\n\n`;
+      const filePath = normalizePath(`${courseFolder.path}/${fileName}`);
+      const existing = this.app.vault.getAbstractFileByPath(filePath);
+      const fullContent = [
+        `${header}${generated.content.trimEnd()}`,
+        renderGenerationProvenance(generated.provenance),
+        "",
+      ].join("\n\n");
+
+      if (existing instanceof TFile) {
+        await this.app.vault.modify(existing, fullContent);
+      } else if (existing) {
+        throw new Error(`Path "${filePath}" exists and is not a file`);
+      } else {
+        await this.app.vault.create(filePath, fullContent);
+      }
+
+      if (generated.qualityWarnings.length > 0) {
+        new Notice(
+          `⚠ ${fileName}: ${generated.qualityWarnings.join("; ")}`,
+          8000,
+        );
+      } else {
+        new Notice(`✓ ${fileName}`);
+      }
+      result = {
+        chapterNum: chapter.chapterNumber,
+        title: chapter.title,
+        fileName,
+        success: true,
+        qualityWarnings: generated.qualityWarnings,
+      };
+    } catch (error) {
+      const errorMsg = errorToMessage(error);
+      if (!(error instanceof GenerationCancelledError)) {
+        new Notice(
+          `✗ Error generating chapter ${chapter.chapterNumber}: ${errorMsg}`,
+          5000,
+        );
+        console.error(
+          `Error generating chapter ${chapter.chapterNumber} (${chapter.title}):`,
+          error,
+        );
+      }
+      result = {
+        chapterNum: chapter.chapterNumber,
+        title: chapter.title,
+        success: false,
+        error: errorMsg,
+      };
+    } finally {
+      onComplete?.(result!);
+    }
+
+    return result!;
+  }
+
+  private async writeFailureReport(
     courseFolder: TFolder,
     courseName: string,
     depth: KnowledgeDepth,
     failedChapters: ChapterGenerationResult[],
   ): Promise<void> {
-    if (failedChapters.length === 0) {
-      return;
-    }
+    if (failedChapters.length === 0) return;
 
     const content = [
       "---",
@@ -450,8 +650,7 @@ export default class KnowledgePlugin extends Plugin {
       "",
       `Generated at: ${new Date().toLocaleString()}`,
       "",
-      "The plugin retried transient API failures before writing this report.",
-      "You can run generation again later after lowering concurrency or switching to a more stable provider.",
+      "Only the chapters below need to be resumed.",
       "",
       ...failedChapters.reduce<string[]>((lines, chapter) => {
         lines.push(`- ${chapter.chapterNum}. ${chapter.title}`);
@@ -460,7 +659,6 @@ export default class KnowledgePlugin extends Plugin {
       }, []),
       "",
     ].join("\n");
-
     const reportPath = normalizePath(`${courseFolder.path}/Failed_Chapters.md`);
     const existing = this.app.vault.getAbstractFileByPath(reportPath);
 
@@ -471,21 +669,35 @@ export default class KnowledgePlugin extends Plugin {
     }
   }
 
-  async clearFailureReport(courseFolder: TFolder, courseName: string): Promise<void> {
+  private async clearFailureReport(
+    courseFolder: TFolder,
+    courseName: string,
+  ): Promise<void> {
     const reportPath = normalizePath(`${courseFolder.path}/Failed_Chapters.md`);
     const existing = this.app.vault.getAbstractFileByPath(reportPath);
-    const content = [
-      `# ${courseName} Failed Chapters`,
-      "",
-      `Resolved at: ${new Date().toLocaleString()}`,
-      "",
-      "All previously failed chapters were generated successfully.",
-      "",
-    ].join("\n");
+    if (!(existing instanceof TFile)) return;
 
-    if (existing instanceof TFile) {
-      await this.app.vault.modify(existing, content);
-    }
+    await this.app.vault.modify(
+      existing,
+      [
+        `# ${courseName} Failed Chapters`,
+        "",
+        `Resolved at: ${new Date().toLocaleString()}`,
+        "",
+        "All previously failed chapters were generated successfully.",
+        "",
+      ].join("\n"),
+    );
+  }
+
+  private async readSavedBlueprint(
+    courseFolder: TFolder,
+  ): Promise<CourseBlueprint | null> {
+    const outlinePath = normalizePath(`${courseFolder.path}/Outlines.md`);
+    const outlineFile = this.app.vault.getAbstractFileByPath(outlinePath);
+    if (!(outlineFile instanceof TFile)) return null;
+
+    return parseBlueprintComment(await this.app.vault.read(outlineFile));
   }
 
   async resumeFailedChapters(courseName: string): Promise<void> {
@@ -493,13 +705,12 @@ export default class KnowledgePlugin extends Plugin {
       new Notice("❌ API key not set! Please configure it in settings.");
       return;
     }
-
-    const folderPath = normalizePath(courseName.trim());
-    if (!folderPath) {
-      new Notice("Please enter a subject folder name");
+    if (this.activeRun) {
+      new Notice("Another knowledge generation is already active", 7000);
       return;
     }
 
+    const folderPath = normalizePath(courseName.trim());
     const courseFolder = this.app.vault.getAbstractFileByPath(folderPath);
     if (!(courseFolder instanceof TFolder)) {
       new Notice(`❌ Folder not found: ${folderPath}`, 7000);
@@ -514,200 +725,243 @@ export default class KnowledgePlugin extends Plugin {
     }
 
     const report = await this.app.vault.read(reportFile);
-    const chapters = parseFailedChapters(report);
+    const failedChapterEntries = parseFailedChapters(report).slice(
+      0,
+      MAX_BLUEPRINT_CHAPTERS,
+    );
     const depth =
       parseFailedChapterDepth(report) ?? DEFAULT_SETTINGS.knowledgeDepth;
-
-    if (chapters.length === 0) {
+    if (failedChapterEntries.length === 0) {
       new Notice("No failed chapters found to resume");
-      this.finishProgress("No failed chapters found");
       return;
     }
 
+    const savedBlueprint = await this.readSavedBlueprint(courseFolder);
+    const blueprint: CourseBlueprint =
+      savedBlueprint ?? {
+        schemaVersion: 1,
+        courseName: courseFolder.name,
+        courseGoal: `Build a practical overview of ${courseFolder.name}.`,
+        prerequisites: [],
+        canonicalTerms: [],
+        chapters: failedChapterEntries.map(([chapterNumber, title]) =>
+          buildFallbackChapterSpec(
+            courseFolder.name,
+            chapterNumber,
+            title,
+            depth,
+          ),
+        ),
+      };
+    const chapters = failedChapterEntries.map(([chapterNumber, title]) => {
+      return (
+        blueprint.chapters.find(
+          (chapter) =>
+            chapter.chapterNumber === chapterNumber || chapter.title === title,
+        ) ??
+        buildFallbackChapterSpec(
+          blueprint.courseName,
+          chapterNumber,
+          title,
+          depth,
+        )
+      );
+    });
+    const run = this.startRun("resume", chapters.length);
+    if (!run) return;
+
     new Notice(`🔁 Resuming ${chapters.length} failed chapters`);
-    this.showProgress(`Resuming failed chapters: 0/${chapters.length}`, 5);
+    this.showProgress(`Resuming failed chapters: 0/${chapters.length}`, 5, run.id);
 
     try {
-      const chapterSem = new Semaphore(this.settings.chapterConcurrency);
-      let completedChapters = 0;
-      let failedChapters = 0;
-      const updateProgress = (result: ChapterGenerationResult) => {
-        completedChapters += 1;
-        if (!result.success) {
-          failedChapters += 1;
-        }
-
-        const percent = 5 + Math.round((completedChapters / chapters.length) * 90);
-        this.showProgress(
-          `Resumed ${completedChapters}/${chapters.length}, ${failedChapters} failed`,
-          percent,
-        );
-      };
-
+      let completed = 0;
+      let failed = 0;
       const results = await Promise.all(
-        chapters.map((chapterInfo) =>
+        chapters.map((chapter) =>
           this.generateChapterContent(
             courseFolder,
-            chapterInfo,
-            courseFolder.path,
-            chapterSem,
+            this.buildChapterContext(blueprint, chapter),
+            run,
             depth,
-            updateProgress,
+            (result) => {
+              completed += 1;
+              if (!result.success) failed += 1;
+              this.showProgress(
+                `Resumed ${completed}/${chapters.length}, ${failed} failed`,
+                5 + Math.round((completed / chapters.length) * 90),
+                run.id,
+              );
+            },
           ),
         ),
       );
-
       const failedResults = results.filter((result) => !result.success);
-      const successCount = results.length - failedResults.length;
-
       if (failedResults.length > 0) {
         await this.writeFailureReport(
           courseFolder,
-          courseFolder.path,
+          blueprint.courseName,
           depth,
           failedResults,
         );
-        new Notice(
-          `⚠️ Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
-          10000,
-        );
+      } else {
+        await this.clearFailureReport(courseFolder, blueprint.courseName);
+      }
+
+      const successCount = results.length - failedResults.length;
+      if (run.cancellation.isCancelled) {
         this.finishProgress(
-          `Resume finished: ${successCount}/${chapters.length} generated, ${failedResults.length} failed`,
+          `Cancelled: ${successCount}/${chapters.length} chapters saved`,
+          run.id,
+        );
+      } else if (failedResults.length > 0) {
+        this.finishProgress(
+          `Resume finished: ${successCount}/${chapters.length} generated`,
+          run.id,
         );
       } else {
-        await this.clearFailureReport(courseFolder, courseFolder.path);
-        new Notice(`✅ Resume complete: ${chapters.length} chapters generated`);
-        this.finishProgress(`Resume complete: ${chapters.length} chapters generated`);
+        this.finishProgress(
+          `Resume complete: ${chapters.length} chapters generated`,
+          run.id,
+        );
       }
     } catch (error) {
-      const errorMsg = errorToMessage(error);
-      new Notice(`❌ Resume failed: ${errorMsg}`, 7000);
-      this.finishProgress(`Resume failed: ${errorMsg}`);
-      console.error("Resume generation error:", error);
+      const message = errorToMessage(error);
+      this.finishProgress(`Resume failed: ${message}`, run.id);
+      if (!(error instanceof GenerationCancelledError)) {
+        console.error("Resume generation error:", error);
+      }
+    } finally {
+      this.endRun(run);
     }
   }
 
   async generate(
     courseName: string,
     depth: KnowledgeDepth = DEFAULT_SETTINGS.knowledgeDepth,
-  ) {
+  ): Promise<void> {
     if (!this.settings.apiKey) {
       new Notice("❌ API key not set! Please configure it in settings.");
       return;
     }
 
-    new Notice(`📚 Generating: ${courseName}`);
-    this.showProgress(`Starting ${courseName}`, 1);
+    const normalizedCourseName = courseName.trim();
+    if (!normalizedCourseName) {
+      new Notice("Please enter a subject name");
+      return;
+    }
+
+    const run = this.startRun("generate", MAX_BLUEPRINT_CHAPTERS + 1);
+    if (!run) return;
+
+    new Notice(`📚 Generating: ${normalizedCourseName}`);
+    this.showProgress(`Generating course blueprint`, 5, run.id);
 
     try {
-      this.showProgress(`Generating outline: ${courseName}`, 5);
-      new Notice("⏳ Generating outline...");
-      const outline = await this.fetchOutline(courseName);
-      const folderPath = normalizePath(courseName);
-      let courseFolder: TFolder;
+      const blueprint = await this.fetchCourseBlueprint(
+        normalizedCourseName,
+        depth,
+        run,
+      );
+      const folderPath = normalizePath(normalizedCourseName);
       const existing = this.app.vault.getAbstractFileByPath(folderPath);
+      let courseFolder: TFolder;
 
       if (existing instanceof TFolder) {
         courseFolder = existing;
-        new Notice(`📁 Using existing folder: ${courseName}`);
       } else if (existing) {
-        const errorMsg = `Path "${folderPath}" exists as a file, not a folder. Please rename or delete it manually.`;
-        new Notice(`❌ ${errorMsg}`, 7000);
-        throw new Error(errorMsg);
+        throw new Error(`Path "${folderPath}" exists as a file`);
       } else {
-        try {
-          courseFolder = await this.app.vault.createFolder(folderPath);
-          new Notice(`📁 Created folder: ${courseName}`);
-        } catch (error) {
-          throw new Error(
-            `Failed to create folder "${folderPath}": ${errorToMessage(error)}`,
-          );
-        }
+        courseFolder = await this.app.vault.createFolder(folderPath);
       }
 
-      const headerText = getHeaderText(this.settings.language);
+      const headerText = getHeaderText(run.config.language);
       const depthLabel = KNOWLEDGE_DEPTH_LABELS[depth];
-      const outlineContent = `# ${courseName} ${headerText.outlineTitle}\n\n*${headerText.generatedAt}: ${new Date().toLocaleString()}*\n\n*Chapter depth: ${depthLabel} (${depth})*\n\n${outline}`;
-      const outlineFilePath = normalizePath(`${courseFolder.path}/Outlines.md`);
-      const existingOutline = this.app.vault.getAbstractFileByPath(outlineFilePath);
-
+      const outlineContent = [
+        `# ${blueprint.courseName} ${headerText.outlineTitle}`,
+        "",
+        `*${headerText.generatedAt}: ${new Date().toLocaleString()}*`,
+        "",
+        `*Chapter depth: ${depthLabel} (${depth})*`,
+        "",
+        `> ${blueprint.courseGoal}`,
+        "",
+        renderCourseOutline(blueprint),
+        "",
+        serializeBlueprintComment(blueprint),
+      ].join("\n");
+      const outlinePath = normalizePath(`${courseFolder.path}/Outlines.md`);
+      const existingOutline = this.app.vault.getAbstractFileByPath(outlinePath);
       if (existingOutline instanceof TFile) {
         await this.app.vault.modify(existingOutline, outlineContent);
       } else if (existingOutline) {
-        throw new Error(`Path "${outlineFilePath}" exists and is not a file`);
+        throw new Error(`Path "${outlinePath}" exists and is not a file`);
       } else {
-        await this.app.vault.create(outlineFilePath, outlineContent);
+        await this.app.vault.create(outlinePath, outlineContent);
       }
 
-      this.showProgress(`Outline saved: ${courseName}`, 15);
-      new Notice("✓ Outlines.md created");
-
-      const chapters = parseChapterTitles(outline);
-      if (chapters.length === 0) {
-        new Notice("⚠️ no chapters found in outline");
-        this.finishProgress("No chapters found");
-        return;
-      }
-
-      new Notice(`📖 Found ${chapters.length} chapters, generating content...`);
-      this.showProgress(`0/${chapters.length} chapters generated`, 15);
-
-      const chapterSem = new Semaphore(this.settings.chapterConcurrency);
-      let completedChapters = 0;
-      let failedChapters = 0;
-      const updateChapterProgress = (result: ChapterGenerationResult) => {
-        completedChapters += 1;
-        if (!result.success) {
-          failedChapters += 1;
-        }
-        const percent = 15 + Math.round((completedChapters / chapters.length) * 80);
-        this.showProgress(
-          `${completedChapters}/${chapters.length} chapters done, ${failedChapters} failed`,
-          percent,
-        );
-      };
-
-      const tasks = chapters.map((chapterInfo) =>
-        this.generateChapterContent(
-          courseFolder,
-          chapterInfo,
-          courseName,
-          chapterSem,
-          depth,
-          updateChapterProgress,
+      const chapters = blueprint.chapters;
+      let completed = 0;
+      let failed = 0;
+      this.showProgress(`0/${chapters.length} chapters generated`, 15, run.id);
+      const results = await Promise.all(
+        chapters.map((chapter) =>
+          this.generateChapterContent(
+            courseFolder,
+            this.buildChapterContext(blueprint, chapter),
+            run,
+            depth,
+            (result) => {
+              completed += 1;
+              if (!result.success) failed += 1;
+              this.showProgress(
+                `${completed}/${chapters.length} chapters done, ${failed} failed`,
+                15 + Math.round((completed / chapters.length) * 80),
+                run.id,
+              );
+            },
+          ),
         ),
       );
-
-      const results = await Promise.all(tasks);
       const failedResults = results.filter((result) => !result.success);
-      await this.writeFailureReport(
-        courseFolder,
-        courseName,
-        depth,
-        failedResults,
-      );
-
-      const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
-        new Notice(
-          `⚠️ Done with failures: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
-          10000,
-        );
-        this.finishProgress(
-          `Done: ${successCount}/${chapters.length} chapters generated, ${failedResults.length} failed`,
+        await this.writeFailureReport(
+          courseFolder,
+          blueprint.courseName,
+          depth,
+          failedResults,
         );
       } else {
-        await this.clearFailureReport(courseFolder, courseName);
-        new Notice(
-          `✅ Done! Generated ${chapters.length} chapters for ${courseName}`,
+        await this.clearFailureReport(courseFolder, blueprint.courseName);
+      }
+
+      const successCount = results.length - failedResults.length;
+      if (run.cancellation.isCancelled) {
+        this.finishProgress(
+          `Cancelled: ${successCount}/${chapters.length} chapters saved`,
+          run.id,
         );
-        this.finishProgress(`Done: ${chapters.length} chapters generated`);
+      } else if (failedResults.length > 0) {
+        this.finishProgress(
+          `Done: ${successCount}/${chapters.length} generated`,
+          run.id,
+        );
+      } else {
+        this.finishProgress(
+          `Done: ${chapters.length} chapters generated`,
+          run.id,
+        );
       }
     } catch (error) {
-      const errorMsg = errorToMessage(error);
-      new Notice(`❌ Error: ${errorMsg}`, 5000);
-      this.finishProgress(`Failed: ${errorMsg}`);
-      console.error("Generation error:", error);
+      const message = errorToMessage(error);
+      if (error instanceof GenerationCancelledError) {
+        this.finishProgress("Generation cancelled", run.id);
+      } else {
+        new Notice(`❌ Error: ${message}`, 5000);
+        this.finishProgress(`Failed: ${message}`, run.id);
+        console.error("Generation error:", error);
+      }
+    } finally {
+      this.endRun(run);
     }
   }
 }

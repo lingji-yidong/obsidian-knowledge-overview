@@ -7,3 +7,5 @@ coverage/
 dist/
 .env
 .env.*
+!.env.eval.example
+eval/runs/

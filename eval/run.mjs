@@ -1,7 +1,7 @@
 import { build } from "esbuild";
 
 const result = await build({
-  entryPoints: ["tests/all.test.ts"],
+  entryPoints: ["eval/cli.ts"],
   bundle: true,
   format: "esm",
   platform: "node",

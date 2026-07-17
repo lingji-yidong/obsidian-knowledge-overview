@@ -27,8 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify release metadata
-        run: npm run release:verify -- "$GITHUB_REF_NAME"
+      - name: Verify release metadata and prepare release notes
+        run: npm run release:verify -- "$GITHUB_REF_NAME" release-notes.md
 
       - name: Build
         run: npm run build
@@ -44,8 +44,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          body: |
-            See CHANGELOG.md for release notes.
+          name: Knowledge Overview ${{ github.ref_name }}
+          body_path: release-notes.md
           files: |
             main.js
             manifest.json

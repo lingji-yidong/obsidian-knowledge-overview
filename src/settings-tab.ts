@@ -12,6 +12,11 @@ import {
 import { clampInteger, parseOptionalPositiveInteger } from "./utils";
 import type KnowledgePlugin from "./plugin";
 import type { KnowledgeType } from "./instructionalTypes";
+import type {
+  ReasoningEffort,
+  ThinkingMode,
+  Verbosity,
+} from "./chatCompletion";
 
 const KNOWLEDGE_TYPE_OPTIONS: Record<KnowledgeType | "auto", string> = {
   auto: "Auto",
@@ -21,6 +26,9 @@ const KNOWLEDGE_TYPE_OPTIONS: Record<KnowledgeType | "auto", string> = {
   empirical: "Empirical / research",
   craft: "Craft / technique",
   historical: "Historical / cultural",
+  interpretive: "Interpretive / textual",
+  argumentative: "Argumentative / normative",
+  case_based: "Case based / social science",
   hybrid: "Hybrid",
 };
 
@@ -139,18 +147,6 @@ export class SettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Auto-expand short chapters")
-      .setDesc(settingDescriptions.autoExpandShortChapters)
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.autoExpandShortChapters)
-          .onChange(async (value) => {
-            this.plugin.settings.autoExpandShortChapters = value;
-            await this.plugin.saveSettings();
-          }),
-      );
-
-    new Setting(containerEl)
       .setName("Max completion tokens")
       .setDesc(settingDescriptions.maxCompletionTokens)
       .addText((text) => {
@@ -197,7 +193,7 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(settingDescriptions.reasoningEffort)
       .addDropdown((dropdown) => {
         dropdown.addOption("", "Unset");
-        ["minimal", "low", "medium", "high"].forEach((value) => {
+        ["none", "minimal", "low", "medium", "high", "xhigh", "max"].forEach((value) => {
           dropdown.addOption(value, value);
         });
 
@@ -205,9 +201,7 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.reasoningEffort ?? "")
           .onChange(async (value) => {
             this.plugin.settings.reasoningEffort =
-              value === ""
-                ? null
-                : (value as "minimal" | "low" | "medium" | "high");
+              value === "" ? null : (value as ReasoningEffort);
             await this.plugin.saveSettings();
           });
       });
@@ -225,7 +219,25 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.verbosity ?? "")
           .onChange(async (value) => {
             this.plugin.settings.verbosity =
-              value === "" ? null : (value as "low" | "medium" | "high");
+              value === "" ? null : (value as Verbosity);
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Thinking mode")
+      .setDesc(
+        "Auto omits the provider-specific toggle. Use enabled or disabled only when your provider documents support.",
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("auto", "Auto");
+        dropdown.addOption("enabled", "Enabled");
+        dropdown.addOption("disabled", "Disabled");
+
+        return dropdown
+          .setValue(this.plugin.settings.thinkingMode)
+          .onChange(async (value) => {
+            this.plugin.settings.thinkingMode = value as ThinkingMode;
             await this.plugin.saveSettings();
           });
       });

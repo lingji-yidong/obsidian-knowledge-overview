@@ -24,6 +24,8 @@ export default defineConfig(
           allowDefaultProject: [
             "eslint.config.mts",
             "manifest.json",
+            "eval/run.mjs",
+            "tests/release-notes.test.mjs",
             "tests/run-tests.mjs",
             "verify-release.mjs",
           ],
@@ -41,7 +43,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["tests/**/*", "verify-release.mjs"],
+    files: ["tests/**/*", "eval/**/*", "verify-release.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -50,6 +52,13 @@ export default defineConfig(
     rules: {
       "obsidianmd/no-nodejs-modules": "off",
       "no-unsanitized/method": "off",
+    },
+  },
+  {
+    files: ["eval/**/*"],
+    rules: {
+      "no-restricted-globals": "off",
+      "obsidianmd/prefer-window-timers": "off",
     },
   },
 );

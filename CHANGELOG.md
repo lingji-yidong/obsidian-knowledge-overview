@@ -2,6 +2,70 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+## 0.0.9
+
+- Replace per-chapter model planning with one reusable course blueprint so the
+  normal request budget is one outline request plus one request per chapter.
+- Remove automatic whole-chapter repair requests and add local length,
+  hierarchy, and review-question anchor warnings.
+- Add targeted provider capability fallback, typed HTTP errors, bounded
+  transient retries, Retry-After support, exponential jitter, and request
+  telemetry.
+- Add run isolation, immutable run settings, cooperative cancellation, a global
+  request boundary, chapter-count and logical-request budgets, and safe resume
+  context recovery.
+- Restore topic-specific headings, target chapters near 10,000 effective
+  characters, ground review questions in taught sections, and add interpretive,
+  argumentative, and case-based humanities structures.
+- Expand offline regression coverage for request counts, retry behavior,
+  concurrency, blueprints, prompts, and chapter quality.
+- Add per-chapter model and provider-reported token provenance without
+  inventing usage when a compatible API omits it.
+- Add a generator-only live evaluation harness with a fixed STEM/humanities
+  corpus, dry-run confirmation, spend guards, immediate checkpoints, local
+  structural checks, and an explicit Codex semantic-review packet.
+- Add DeepSeek V4 request compatibility, explicit evaluation thinking-mode
+  control, empty-final-response detection, and reasoning-token provenance.
+- Make product and evaluation thinking control provider-neutral with `auto`,
+  `enabled`, and `disabled` modes while keeping hidden reasoning out of
+  generated notes.
+- Use depth-aware textbook-like chapter ranges and reject undersized production
+  blueprints before any chapter-generation requests are started.
+- Inject only the active domain's reliability rules into chapter prompts, with
+  stronger empirical-design and historical-fact boundaries and less repeated
+  cross-domain prompt noise.
+- Add reproducible evaluation reasoning-effort and verbosity controls, expand
+  supported reasoning levels, and make capability fallback disable only the
+  provider field that was rejected.
+- Reduce H3 and checklist fragmentation, add a deterministic final QA boundary,
+  parse review questions only from their own list, and teach operational SRM
+  calibration when randomized experiments are in scope.
+- Raise the course-blueprint output cap from 6,000 to 16,000 tokens while still
+  respecting smaller user-configured limits.
+- Omit temperature by default so strict or reasoning-oriented providers receive
+  no sampling parameter unless the user explicitly enters one.
+- Treat the requested chapter minimum as a soft density target in evaluation;
+  only output below 80% of that minimum fails the structural length floor.
+- Add deterministic textbook-style chapter section numbering (`3.1`, `3.1.1`)
+  while keeping QA source anchors as invisible, synchronized metadata.
+- Rewrite the README for end users, simplify provider URL and model ID setup,
+  explain Gemini free-tier and high-demand limits, and move evaluation details
+  into `eval/README.md`.
+- Add an upfront billing warning that a complete GPT-5.6 Sol subject can cost
+  around US$3 and clarify that concurrency does not reduce total spend.
+- Restore explicit Obsidian math-delimiter rules, normalize common unsupported
+  LaTeX delimiters locally, and allow useful, valid Mermaid diagrams.
+- Make the semantic-review contract model- and provider-neutral.
+- Expand the full evaluation profile with fixed chemistry, biology, physics,
+  and quantitative-finance theory cases, plus a four-call `theory` profile.
+- Reject H4/deeper fragmentation and strengthen mathematical interpretation
+  boundaries for approximations, equilibria, stationary conditions, and
+  transformed probability measures.
+- Populate each GitHub Release page from its matching Changelog section and
+  block releases whose notes are missing or empty.
+
 ## 0.0.8
 
 - Add chapter depth presets for map-only scans, usable overviews, deep lessons,

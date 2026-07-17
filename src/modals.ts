@@ -79,7 +79,8 @@ export class InputModal extends Modal {
       text: "Choose intent for this run",
     });
 
-    let selectedDepth: KnowledgeDepth = DEFAULT_SETTINGS.knowledgeDepth;
+    let selectedDepth: KnowledgeDepth =
+      this.plugin.settings.knowledgeDepth ?? DEFAULT_SETTINGS.knowledgeDepth;
     const depthGrid = depthGroup.createDiv({
       cls: "knowledge-depth-grid",
     });

@@ -1,0 +1,722 @@
+{
+  "schemaVersion": 1,
+  "suiteVersion": "v3",
+  "profiles": {
+    "model-comparison": [
+      "stem-ab-test-leakage",
+      "humanities-french-revolution"
+    ],
+    "smoke": [
+      "stem-fourier-aliasing",
+      "stem-ab-test-leakage",
+      "humanities-unreliable-narrator",
+      "humanities-french-revolution"
+    ],
+    "theory": [
+      "stem-chemical-equilibrium",
+      "stem-population-genetics",
+      "stem-lagrangian-mechanics",
+      "stem-option-pricing-no-arbitrage"
+    ],
+    "full": [
+      "stem-fourier-aliasing",
+      "stem-ab-test-leakage",
+      "humanities-unreliable-narrator",
+      "humanities-french-revolution",
+      "stem-virtual-memory",
+      "stem-git-interactive-rebase",
+      "humanities-civil-disobedience",
+      "humanities-comparative-institutions",
+      "stem-chemical-equilibrium",
+      "stem-population-genetics",
+      "stem-lagrangian-mechanics",
+      "stem-option-pricing-no-arbitrage"
+    ]
+  },
+  "cases": [
+    {
+      "id": "stem-fourier-aliasing",
+      "discipline": "stem",
+      "description": "Tests mathematical assumptions, signal intuition, worked examples, and QA grounding.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "數位訊號處理快速複習",
+        "courseGoal": "建立能用於考試與面試的取樣、頻域分析和濾波核心理解。",
+        "prerequisites": ["基本三角函數", "複數", "連續與離散時間訊號的基本概念"],
+        "canonicalTerms": ["取樣頻率 $f_s$", "奈奎斯特頻率", "混疊 (aliasing)"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "從連續訊號到離散序列",
+            "focus": "建立取樣、離散時間索引和頻譜週期化所需的表示法。",
+            "subtopics": ["取樣操作", "離散時間序列", "頻譜週期化"],
+            "learningObjectives": ["區分連續時間與離散時間表示", "說明取樣在時域和頻域的作用"],
+            "prerequisites": ["基本三角函數", "複數"],
+            "outOfScope": ["混疊的診斷與修正", "數位濾波器設計"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["取樣週期 $T_s$", "取樣頻率 $f_s$"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "混疊為何發生，以及如何判斷",
+            "focus": "從頻譜副本重疊推導混疊條件，建立診斷與預防混疊的直覺。",
+            "subtopics": ["奈奎斯特取樣條件", "頻譜副本重疊", "正弦波混疊例子", "抗混疊濾波器", "欠取樣的限制"],
+            "learningObjectives": ["用公式與圖像直覺解釋混疊", "計算正弦波取樣後的表觀頻率", "選擇安全取樣率", "說明抗混疊濾波器的作用"],
+            "prerequisites": ["取樣頻率", "頻譜週期化", "正弦波頻率"],
+            "outOfScope": ["FIR 與 IIR 濾波器係數設計", "多速率 polyphase 實作", "壓縮感知"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual", "empirical"],
+            "canonicalTerms": ["奈奎斯特頻率", "混疊 (aliasing)", "抗混疊濾波器"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "重建、濾波與實際取樣鏈",
+            "focus": "把理想重建連到 ADC 前端、濾波器和量化的工程限制。",
+            "subtopics": ["理想重建", "零階保持", "ADC 前端", "量化雜訊"],
+            "learningObjectives": ["描述實際取樣鏈", "比較理想模型和工程限制"],
+            "prerequisites": ["奈奎斯特取樣條件", "混疊"],
+            "outOfScope": ["完整 ADC 電路設計"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["procedural"],
+            "canonicalTerms": ["重建濾波器", "量化"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["奈奎斯特", "混疊", "抗混疊"],
+        "outOfScope": ["polyphase", "壓縮感知"]
+      }
+    },
+    {
+      "id": "stem-ab-test-leakage",
+      "discipline": "stem",
+      "description": "Tests evidence-versus-inference, bias mechanisms, metrics, and failure diagnosis.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "A/B 測試與因果推論實務",
+        "courseGoal": "能設計、診斷並正確解讀線上實驗，而不把相關性誤當因果。",
+        "prerequisites": ["平均數與變異數", "基本假設檢定"],
+        "canonicalTerms": ["處置組", "控制組", "隨機化", "資料洩漏 (leakage)"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "隨機化如何建立可比較的組別",
+            "focus": "理解估計目標、隨機分派單位與實驗前假設。",
+            "subtopics": ["估計目標", "隨機分派", "實驗單位", "樣本量"],
+            "learningObjectives": ["定義平均處置效果", "選擇合理的隨機化單位"],
+            "prerequisites": ["平均數", "機率"],
+            "outOfScope": ["洩漏與污染診斷", "序列檢定"],
+            "knowledgeType": "empirical",
+            "secondaryKnowledgeTypes": ["mathematical"],
+            "canonicalTerms": ["estimand", "隨機化單位"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "資料洩漏、組間污染與失真的實驗結論",
+            "focus": "辨識實驗資料與產品機制如何破壞組間可比性，並建立可操作的診斷流程。",
+            "subtopics": ["特徵與標籤洩漏", "跨組網路效應", "重複曝光與身份拼接", "樣本流失", "護欄指標", "AA 測試"],
+            "learningObjectives": ["區分洩漏、污染與選擇偏差", "從指標異常定位可能機制", "提出預防與敏感度分析方案", "限定因果結論可成立的範圍"],
+            "prerequisites": ["隨機分派", "處置組與控制組", "轉化率"],
+            "outOfScope": ["完整 CUPED 推導", "貝氏序列決策", "多臂吃角子機演算法"],
+            "knowledgeType": "empirical",
+            "secondaryKnowledgeTypes": ["procedural", "conceptual"],
+            "canonicalTerms": ["資料洩漏 (leakage)", "組間污染 (contamination)", "護欄指標", "AA 測試", "樣本比例失衡 (SRM)"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "從效果估計到可交付的實驗報告",
+            "focus": "選擇效果量、不確定性表達與決策門檻。",
+            "subtopics": ["效果量", "信賴區間", "多重比較", "異質性"],
+            "learningObjectives": ["報告效果量與不確定性", "避免只看 p 值"],
+            "prerequisites": ["可比較組別", "常見偏差診斷"],
+            "outOfScope": ["產品實驗平台架構"],
+            "knowledgeType": "empirical",
+            "secondaryKnowledgeTypes": ["mathematical"],
+            "canonicalTerms": ["效果量", "信賴區間"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["洩漏", "污染", "護欄指標", "AA 測試", "SRM"],
+        "outOfScope": ["CUPED 推導", "多臂吃角子機"]
+      }
+    },
+    {
+      "id": "humanities-unreliable-narrator",
+      "discipline": "humanities",
+      "description": "Tests close reading, textual evidence, competing interpretations, and bounded claims.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "敘事學與小說文本細讀",
+        "courseGoal": "用可定位的文本證據分析敘述形式，同時保留合理的詮釋分歧。",
+        "prerequisites": ["能區分作者、敘述者與人物"],
+        "canonicalTerms": ["敘述者", "焦點化", "不可靠敘述者", "文本證據"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "誰在說、誰在看：敘述聲音與焦點化",
+            "focus": "建立敘述層次、視角與資訊限制的分析語彙。",
+            "subtopics": ["敘述聲音", "焦點化", "資訊限制", "敘述距離"],
+            "learningObjectives": ["區分敘述者與焦點人物", "定位視角變化的文本訊號"],
+            "prerequisites": ["作者與敘述者的區別"],
+            "outOfScope": ["不可靠性的判準", "完整小說史"],
+            "knowledgeType": "interpretive",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["焦點化", "敘述聲音"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "不可靠敘述者：證據、判準與詮釋競爭",
+            "focus": "從語言、事件與其他人物的反證判斷敘述可靠性，避免把不喜歡的觀點直接判為不可靠。",
+            "subtopics": ["不可靠性的不同類型", "敘述矛盾與資訊缺口", "文本內部反證", "讀者推論", "兩種競爭詮釋的比較"],
+            "learningObjectives": ["提出可檢驗的不可靠性判準", "以具體句段支持判斷", "區分文本陳述與讀者推論", "比較兩種有證據的詮釋"],
+            "prerequisites": ["敘述者", "焦點化", "文本證據"],
+            "outOfScope": ["精神醫學診斷", "作者本人心理推測", "單一作品的完整情節摘要"],
+            "knowledgeType": "interpretive",
+            "secondaryKnowledgeTypes": ["argumentative"],
+            "canonicalTerms": ["不可靠敘述者", "文本陳述", "讀者推論", "競爭詮釋"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "時間、順序與敘事節奏如何改變理解",
+            "focus": "分析倒敘、預敘、省略和場景化的詮釋效果。",
+            "subtopics": ["故事與話語", "倒敘", "預敘", "敘事速度"],
+            "learningObjectives": ["辨識時間重排", "說明形式如何引導讀者判斷"],
+            "prerequisites": ["敘述聲音", "文本證據"],
+            "outOfScope": ["不可靠敘述者的判準"],
+            "knowledgeType": "interpretive",
+            "secondaryKnowledgeTypes": ["historical"],
+            "canonicalTerms": ["故事時間", "話語時間"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["不可靠", "文本證據", "推論", "競爭詮釋"],
+        "outOfScope": ["精神醫學診斷", "作者本人心理"]
+      }
+    },
+    {
+      "id": "humanities-french-revolution",
+      "discipline": "humanities",
+      "description": "Tests multi-causal history, historiographical disagreement, evidence limits, and non-teleological structure.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "法國大革命：事件、因果與史學解釋",
+        "courseGoal": "快速掌握革命的制度背景、關鍵轉折及相互競爭的因果解釋。",
+        "prerequisites": ["十八世紀歐洲的基本年代概念"],
+        "canonicalTerms": ["舊制度 (Ancien Régime)", "三級會議", "革命情勢", "史學解釋"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "舊制度的結構與改革困境",
+            "focus": "說明身分特權、財政與國家能力如何形成改革限制。",
+            "subtopics": ["身分體制", "稅制", "王室財政", "改革嘗試"],
+            "learningObjectives": ["描述舊制度的不平等", "解釋改革為何屢次受阻"],
+            "prerequisites": ["君主制基本概念"],
+            "outOfScope": ["1789 年後的政治階段", "單一原因總結"],
+            "knowledgeType": "historical",
+            "secondaryKnowledgeTypes": ["case_based"],
+            "canonicalTerms": ["舊制度", "特權", "財政危機"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "革命為何在 1789 年爆發：多重因果與競爭解釋",
+            "focus": "比較財政、社會、政治文化與短期危機解釋，區分背景條件、觸發因素和行動者選擇。",
+            "subtopics": ["王室財政危機", "社會身分與利益衝突", "公共領域與政治文化", "糧價與短期危機", "三級會議的制度互動", "馬克思主義、修正主義與後修正主義解釋"],
+            "learningObjectives": ["建立多層次因果鏈", "比較三種史學取向", "以證據限制因果主張", "避免把結果當作必然"],
+            "prerequisites": ["舊制度", "身分特權", "財政危機"],
+            "outOfScope": ["恐怖統治的完整經過", "拿破崙戰爭", "革命必然性的單一答案"],
+            "knowledgeType": "historical",
+            "secondaryKnowledgeTypes": ["argumentative", "case_based"],
+            "canonicalTerms": ["結構條件", "觸發因素", "行動者選擇", "修正主義"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "從君主立憲到共和與恐怖統治",
+            "focus": "追蹤制度崩解、戰爭和政治動員如何推動革命激進化。",
+            "subtopics": ["君主立憲", "共和建立", "戰爭", "恐怖統治"],
+            "learningObjectives": ["辨識主要轉折", "分析激進化機制"],
+            "prerequisites": ["1789 年危機", "三級會議"],
+            "outOfScope": ["拿破崙時期", "革命起因的全面重述"],
+            "knowledgeType": "historical",
+            "secondaryKnowledgeTypes": ["case_based"],
+            "canonicalTerms": ["激進化", "共和"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["財政", "政治文化", "觸發因素", "修正主義"],
+        "outOfScope": ["拿破崙戰爭", "恐怖統治的完整經過"]
+      }
+    },
+    {
+      "id": "stem-virtual-memory",
+      "discipline": "stem",
+      "description": "Tests systems mechanisms, state transitions, quantitative intuition, and troubleshooting boundaries.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "作業系統記憶體管理",
+        "courseGoal": "理解虛擬記憶體機制並能診斷常見效能問題。",
+        "prerequisites": ["二進位位址", "程序與執行緒"],
+        "canonicalTerms": ["虛擬位址", "實體頁框", "page fault", "working set"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "位址轉換與頁表",
+            "focus": "建立虛擬頁、實體頁框、頁表與 TLB 的資料流。",
+            "subtopics": ["位址拆分", "頁表", "TLB", "權限位元"],
+            "learningObjectives": ["追蹤一次位址轉換", "說明 TLB 的作用"],
+            "prerequisites": ["二進位位址"],
+            "outOfScope": ["page fault 處理", "替換演算法"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["mathematical"],
+            "canonicalTerms": ["VPN", "offset", "TLB"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "Page fault、working set 與 thrashing",
+            "focus": "連結缺頁處理、局部性、工作集合與系統抖動，並教會基本診斷。",
+            "subtopics": ["minor 與 major page fault", "局部性", "working set", "記憶體壓力", "thrashing", "監控指標與診斷順序"],
+            "learningObjectives": ["描述缺頁處理狀態轉換", "區分不同缺頁成本", "解釋工作集合與抖動", "從指標建立診斷假設"],
+            "prerequisites": ["頁表", "虛擬頁", "實體頁框", "程序排程"],
+            "outOfScope": ["特定作業系統核心原始碼", "NUMA 調優", "容器 memory cgroup 細節"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["procedural", "empirical"],
+            "canonicalTerms": ["page fault", "working set", "thrashing", "major fault"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "頁面替換策略與取捨",
+            "focus": "比較 FIFO、LRU 近似與 clock 演算法。",
+            "subtopics": ["FIFO", "LRU", "clock", "Belady anomaly"],
+            "learningObjectives": ["模擬替換決策", "比較實作成本"],
+            "prerequisites": ["working set", "page fault"],
+            "outOfScope": ["核心原始碼實作"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["replacement policy", "reference bit"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["page fault", "working set", "thrashing", "major"],
+        "outOfScope": ["NUMA", "cgroup"]
+      }
+    },
+    {
+      "id": "stem-git-interactive-rebase",
+      "discipline": "stem",
+      "description": "Tests a complete procedural workflow, safety checks, verification, and recovery advice.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "Git 歷史整理與安全恢復",
+        "courseGoal": "能在不破壞協作歷史的前提下整理本地提交並恢復失誤。",
+        "prerequisites": ["會使用 add、commit、status 與 log"],
+        "canonicalTerms": ["commit graph", "interactive rebase", "reflog", "force-with-lease"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "讀懂 commit graph 與分支指標",
+            "focus": "理解父提交、HEAD、分支與可達性。",
+            "subtopics": ["commit graph", "HEAD", "branch", "merge base"],
+            "learningObjectives": ["讀懂圖形化 log", "解釋分支移動"],
+            "prerequisites": ["基本 commit 操作"],
+            "outOfScope": ["interactive rebase 操作", "遠端改寫"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["procedural"],
+            "canonicalTerms": ["HEAD", "parent commit"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "安全完成一次 interactive rebase",
+            "focus": "以任務導向流程完成重排、合併與修改提交，並在每個風險點驗證與復原。",
+            "subtopics": ["開始前檢查", "選擇 rebase 範圍", "pick、reword、squash 與 fixup", "衝突處理", "結果驗證", "abort 與 reflog 恢復", "共享分支風險"],
+            "learningObjectives": ["選出正確的 rebase 起點", "完成提交整理", "安全處理衝突", "驗證結果並能復原"],
+            "prerequisites": ["commit graph", "HEAD", "工作樹與暫存區"],
+            "outOfScope": ["複雜 merge-preserving rebase", "伺服器端 branch protection 設定", "大型 monorepo 遷移"],
+            "knowledgeType": "procedural",
+            "secondaryKnowledgeTypes": ["conceptual", "craft"],
+            "canonicalTerms": ["interactive rebase", "reflog", "abort", "force-with-lease"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "遠端協作中的歷史改寫政策",
+            "focus": "區分個人分支、共享分支與已發布提交的風險。",
+            "subtopics": ["force-with-lease", "共享分支", "pull request policy"],
+            "learningObjectives": ["選擇可接受的推送策略", "與協作者協調改寫"],
+            "prerequisites": ["interactive rebase", "遠端分支"],
+            "outOfScope": ["CI 平台管理"],
+            "knowledgeType": "procedural",
+            "secondaryKnowledgeTypes": ["case_based"],
+            "canonicalTerms": ["force-with-lease", "published history"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["rebase", "squash", "reflog", "abort", "force-with-lease"],
+        "outOfScope": ["merge-preserving", "monorepo 遷移"]
+      }
+    },
+    {
+      "id": "humanities-civil-disobedience",
+      "discipline": "humanities",
+      "description": "Tests argument reconstruction, objections, normative criteria, and distinctions between claims and examples.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "公民不服從的政治哲學",
+        "courseGoal": "重建支持與反對公民不服從的論證，並能以一致標準評估案例。",
+        "prerequisites": ["論點、前提與結論的基本區別"],
+        "canonicalTerms": ["政治義務", "合法性", "公民不服從", "良心拒絕"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "政治義務與服從法律的理由",
+            "focus": "比較同意、公平互惠與自然義務等政治義務理論。",
+            "subtopics": ["同意", "公平互惠", "自然義務", "合法性"],
+            "learningObjectives": ["重建三類政治義務論證", "辨識各自弱點"],
+            "prerequisites": ["前提與結論"],
+            "outOfScope": ["公民不服從的正當化條件", "具體運動史"],
+            "knowledgeType": "argumentative",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["政治義務", "合法性"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "何時公民不服從可以被正當化",
+            "focus": "比較公開性、非暴力、最後手段、比例性與接受法律後果等候選條件，處理嚴肅反對意見。",
+            "subtopics": ["公民不服從的定義邊界", "公開性與溝通功能", "非暴力爭議", "最後手段與緊迫性", "比例性", "民主程序與法治反對", "回應與判準"],
+            "learningObjectives": ["區分公民不服從、良心拒絕與一般違法", "重建正當化論證", "提出最強反對意見", "用明示判準比較案例"],
+            "prerequisites": ["政治義務", "合法性", "前提與結論"],
+            "outOfScope": ["單一國家的法律意見", "具體抗議行動指南", "所有歷史案例的完整敘述"],
+            "knowledgeType": "argumentative",
+            "secondaryKnowledgeTypes": ["case_based", "historical"],
+            "canonicalTerms": ["公民不服從", "公開性", "非暴力", "比例性", "最後手段"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "以案例檢驗正當化判準",
+            "focus": "比較不同民主條件與不正義程度下的案例。",
+            "subtopics": ["案例重建", "判準衝突", "情境差異"],
+            "learningObjectives": ["一致應用判準", "說明判斷限制"],
+            "prerequisites": ["公民不服從的正當化條件"],
+            "outOfScope": ["新的政治義務理論"],
+            "knowledgeType": "case_based",
+            "secondaryKnowledgeTypes": ["argumentative"],
+            "canonicalTerms": ["比例性", "合法性"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["公開", "非暴力", "最後手段", "比例", "法治"],
+        "outOfScope": ["法律意見", "行動指南"]
+      }
+    },
+    {
+      "id": "humanities-comparative-institutions",
+      "discipline": "humanities",
+      "description": "Tests comparative cases, causal mechanisms, alternative explanations, and transfer limits.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "比較政治制度：議會制與總統制",
+        "courseGoal": "理解行政與立法關係如何影響問責、政策協調與制度穩定，避免制度決定論。",
+        "prerequisites": ["行政、立法與選舉的基本概念"],
+        "canonicalTerms": ["議會制", "總統制", "行政—立法關係", "否決者", "政黨體系"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "比較制度不能只比較憲法名稱",
+            "focus": "建立選案、比較維度與制度內部差異的研究設計。",
+            "subtopics": ["比較維度", "選案偏差", "制度內差異", "結果變項"],
+            "learningObjectives": ["定義可比較的制度特徵", "辨識選案偏差"],
+            "prerequisites": ["行政與立法"],
+            "outOfScope": ["兩種制度的機制比較", "特定國家完整政治史"],
+            "knowledgeType": "case_based",
+            "secondaryKnowledgeTypes": ["empirical"],
+            "canonicalTerms": ["比較維度", "選案偏差"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "行政—立法關係如何改變問責與僵局風險",
+            "focus": "比較議會制與總統制的生存來源、倒閣與否決機制，並納入政黨體系等替代解釋。",
+            "subtopics": ["行政權的生存來源", "融合與分立", "不信任案與固定任期", "問責鏈", "政策僵局", "政黨紀律與選舉制度", "案例間轉移限制"],
+            "learningObjectives": ["比較兩種制度的核心機制", "建立問責與僵局的因果鏈", "提出政黨體系等替代解釋", "限定跨國推論"],
+            "prerequisites": ["行政與立法", "比較維度", "結果變項"],
+            "outOfScope": ["半總統制的完整類型學", "單一國家選舉預測", "哪一制度必然更民主的結論"],
+            "knowledgeType": "case_based",
+            "secondaryKnowledgeTypes": ["empirical", "argumentative"],
+            "canonicalTerms": ["行政—立法關係", "不信任案", "固定任期", "政策僵局", "政黨紀律"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "聯合政府、政黨體系與制度的交互作用",
+            "focus": "分析政黨數量、紀律與聯合政治如何改變制度效果。",
+            "subtopics": ["政黨體系", "聯合政府", "少數政府", "制度交互作用"],
+            "learningObjectives": ["解釋制度效果的條件性", "比較替代機制"],
+            "prerequisites": ["議會制與總統制機制"],
+            "outOfScope": ["完整選舉制度分類"],
+            "knowledgeType": "case_based",
+            "secondaryKnowledgeTypes": ["empirical"],
+            "canonicalTerms": ["政黨體系", "聯合政府"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["不信任案", "固定任期", "僵局", "政黨紀律", "替代解釋"],
+        "outOfScope": ["半總統制的完整類型", "選舉預測"]
+      }
+    },
+    {
+      "id": "stem-chemical-equilibrium",
+      "discipline": "stem",
+      "description": "Tests chemical thermodynamics, equation rendering, assumptions, activities, and equilibrium-versus-kinetics boundaries.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "化學熱力學與化學平衡",
+        "courseGoal": "從自由能與化學勢建立可計算的平衡觀念，並避免把熱力學自發性誤解為反應速率。",
+        "prerequisites": ["莫耳與濃度", "基本對數", "焓與熵的初步概念"],
+        "canonicalTerms": ["吉布斯自由能", "反應商 $Q$", "平衡常數 $K$", "活度"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "從狀態函數到化學勢",
+            "focus": "建立吉布斯自由能、化學勢與組成改變之間的關係。",
+            "subtopics": ["狀態函數", "吉布斯自由能", "化學勢", "標準態"],
+            "learningObjectives": ["區分狀態函數與路徑函數", "解釋化學勢的物理意義"],
+            "prerequisites": ["焓", "熵", "溫度與壓力"],
+            "outOfScope": ["平衡常數的完整推導", "反應動力學"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["$G$", "化學勢 $\\mu$", "標準態"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "反應商、平衡常數與自由能如何共同判斷反應方向",
+            "focus": "由 $\\Delta_r G = \\Delta_r G^\\circ + RT\\ln Q$ 連結反應方向、平衡條件與組成變化。",
+            "subtopics": ["反應商 $Q$", "平衡常數 $K$", "$\\Delta_r G$ 與 $\\Delta_r G^\\circ$", "活度與濃度近似", "溫度對平衡的影響", "勒沙特列原理的適用邊界"],
+            "learningObjectives": ["根據 $Q$ 與 $K$ 判斷淨反應方向", "推導 $\\Delta_r G^\\circ = -RT\\ln K$", "說明活度何時不能以濃度取代", "區分平衡位置與到達平衡的速度"],
+            "prerequisites": ["吉布斯自由能", "化學勢", "標準態", "自然對數"],
+            "outOfScope": ["速率方程與速率常數", "過渡態理論", "非理想溶液模型的完整推導"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual", "empirical"],
+            "canonicalTerms": ["反應商 $Q$", "平衡常數 $K$", "活度", "標準反應吉布斯自由能"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "酸鹼、溶解與氧化還原平衡的統一計算框架",
+            "focus": "將同一套平衡語言應用於多類化學系統。",
+            "subtopics": ["酸鹼平衡", "溶度積", "氧化還原平衡", "耦合平衡"],
+            "learningObjectives": ["建立質量與電荷平衡", "辨識耦合反應如何改變總平衡"],
+            "prerequisites": ["反應商", "平衡常數", "活度"],
+            "outOfScope": ["反應機構與速率控制"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["procedural"],
+            "canonicalTerms": ["質量平衡", "電荷平衡", "條件平衡常數"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["反應商", "平衡常數", "活度", "吉布斯自由能", "勒沙特列"],
+        "outOfScope": ["速率方程", "過渡態理論"]
+      }
+    },
+    {
+      "id": "stem-population-genetics",
+      "discipline": "stem",
+      "description": "Tests biological model assumptions, genotype-frequency reasoning, worked calculations, and mechanism boundaries.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "族群遺傳學的模型與推論",
+        "courseGoal": "用等位基因與基因型頻率理解族群演化模型，並清楚區分模型基準、偏離機制與資料證據。",
+        "prerequisites": ["孟德爾遺傳", "基本機率", "二項式展開"],
+        "canonicalTerms": ["等位基因頻率", "基因型頻率", "Hardy-Weinberg 平衡", "遺傳漂變"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "從個體基因型到族群頻率",
+            "focus": "建立等位基因頻率、基因型頻率與抽樣誤差的表示法。",
+            "subtopics": ["等位基因計數", "基因型頻率", "抽樣", "世代更新"],
+            "learningObjectives": ["由基因型計數計算等位基因頻率", "區分個體遺傳與族群統計"],
+            "prerequisites": ["孟德爾遺傳", "比例"],
+            "outOfScope": ["Hardy-Weinberg 推導", "自然選擇模型"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["等位基因頻率 $p$ 與 $q$", "基因型頻率"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "Hardy-Weinberg 平衡是基準模型而不是演化停止證明",
+            "focus": "推導 $p^2 + 2pq + q^2 = 1$，逐項檢查假設，並正確解讀觀察資料對模型的偏離。",
+            "subtopics": ["隨機交配", "等位基因與基因型頻率轉換", "平衡成立的假設", "基因型計數的預期值", "卡方適合度檢定", "偏離平衡的多重原因"],
+            "learningObjectives": ["推導 Hardy-Weinberg 基因型比例", "完成一個基因型頻率計算", "列出模型成立條件", "避免把統計偏離直接歸因於單一演化力量"],
+            "prerequisites": ["等位基因頻率", "基因型頻率", "二項式展開"],
+            "outOfScope": ["連鎖不平衡的完整理論", "共同祖先模型", "特定族群的醫療風險推論"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual", "empirical"],
+            "canonicalTerms": ["Hardy-Weinberg 平衡", "隨機交配", "預期基因型頻率", "卡方適合度檢定"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "選擇、漂變、突變與基因流如何改變頻率",
+            "focus": "比較主要演化力量的機制、尺度與可辨識證據。",
+            "subtopics": ["自然選擇", "遺傳漂變", "突變", "基因流", "有效族群大小"],
+            "learningObjectives": ["比較確定性與隨機性機制", "解釋有效族群大小的作用"],
+            "prerequisites": ["Hardy-Weinberg 平衡", "抽樣"],
+            "outOfScope": ["分子鐘校準", "共同祖先模型"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["mathematical", "empirical"],
+            "canonicalTerms": ["選擇係數", "遺傳漂變", "有效族群大小"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["Hardy-Weinberg", "等位基因頻率", "基因型頻率", "隨機交配", "卡方"],
+        "outOfScope": ["共同祖先模型", "醫療風險"]
+      }
+    },
+    {
+      "id": "stem-lagrangian-mechanics",
+      "discipline": "stem",
+      "description": "Tests theoretical physics derivations, generalized coordinates, constraints, conservation laws, and notation consistency.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "分析力學：從牛頓定律到拉格朗日形式",
+        "courseGoal": "理解拉格朗日力學如何用廣義座標與變分原理重寫受約束系統的運動問題。",
+        "prerequisites": ["牛頓第二定律", "動能與位能", "微積分", "偏微分"],
+        "canonicalTerms": ["廣義座標", "拉格朗日量 $L$", "作用量 $S$", "Euler-Lagrange 方程"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "約束、自由度與廣義座標",
+            "focus": "從幾何約束辨認系統自由度並選擇合適座標。",
+            "subtopics": ["完整約束", "自由度", "廣義座標", "虛位移"],
+            "learningObjectives": ["計算簡單系統的自由度", "選擇能吸收約束的座標"],
+            "prerequisites": ["向量", "牛頓力學"],
+            "outOfScope": ["作用量變分", "Hamilton 形式"],
+            "knowledgeType": "conceptual",
+            "secondaryKnowledgeTypes": ["mathematical"],
+            "canonicalTerms": ["自由度", "廣義座標 $q_i$", "約束"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "作用量原理如何導出 Euler-Lagrange 方程",
+            "focus": "由固定端點變分推導運動方程，並以單擺與循環座標連結牛頓形式和守恆量。",
+            "subtopics": ["拉格朗日量 $L=T-V$", "作用量與固定端點變分", "Euler-Lagrange 方程推導", "單擺 worked example", "循環座標與廣義動量守恆", "適用假設與符號一致性"],
+            "learningObjectives": ["說明作用量取駐值的意義", "推導 Euler-Lagrange 方程", "建立單擺運動方程", "由循環座標辨認守恆量"],
+            "prerequisites": ["廣義座標", "動能", "位能", "分部積分"],
+            "outOfScope": ["Hamilton 正則方程", "場論", "Noether 定理的完整證明", "非保守系統的進階形式"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["拉格朗日量", "作用量", "Euler-Lagrange 方程", "循環座標", "廣義動量"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "小振動與耦合模態",
+            "focus": "在線性近似下把多自由度系統化為正常模態問題。",
+            "subtopics": ["平衡點展開", "小振動近似", "耦合振子", "正常模態"],
+            "learningObjectives": ["建立線性化方程", "解釋正常模態的物理意義"],
+            "prerequisites": ["Euler-Lagrange 方程", "矩陣特徵值"],
+            "outOfScope": ["混沌與非線性共振"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["正常模態", "小振動"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["拉格朗日量", "作用量", "Euler-Lagrange", "廣義座標", "循環座標"],
+        "outOfScope": ["Hamilton 正則方程", "場論"]
+      }
+    },
+    {
+      "id": "stem-option-pricing-no-arbitrage",
+      "discipline": "stem",
+      "description": "Tests quantitative-finance theory, replication, risk-neutral pricing, worked calculations, assumptions, and non-advisory boundaries.",
+      "language": "zh_tw",
+      "depth": "onboarding",
+      "chapterNumber": "2",
+      "blueprint": {
+        "schemaVersion": 1,
+        "courseName": "無套利定價與選擇權理論",
+        "courseGoal": "從複製組合建立衍生品定價邏輯，理解風險中立機率是定價工具而非真實報酬預測。",
+        "prerequisites": ["複利與折現", "基本機率", "股票與選擇權的基本 payoff"],
+        "canonicalTerms": ["無套利", "複製組合", "風險中立機率", "折現期望值"],
+        "chapters": [
+          {
+            "chapterNumber": "1",
+            "title": "一價定律、無套利與複製組合",
+            "focus": "建立相同現金流必須具有相同價格的定價基礎。",
+            "subtopics": ["一價定律", "套利組合", "複製現金流", "遠期價格"],
+            "learningObjectives": ["辨識簡單套利", "由複製現金流建立價格關係"],
+            "prerequisites": ["折現", "現金流"],
+            "outOfScope": ["風險中立機率推導", "實際交易策略"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual"],
+            "canonicalTerms": ["一價定律", "無套利", "複製組合"]
+          },
+          {
+            "chapterNumber": "2",
+            "title": "一期間二項樹如何導出風險中立定價",
+            "focus": "以股票與無風險資產複製選擇權 payoff，推導避險比率、風險中立機率與折現價格。",
+            "subtopics": ["一期間二項樹", "選擇權到期 payoff", "避險比率 $\\Delta$", "複製組合", "風險中立機率", "無套利條件", "worked numerical example", "真實機率與定價機率的區別"],
+            "learningObjectives": ["由兩個終端狀態解出複製組合", "推導風險中立機率", "計算一期間選擇權價格", "解釋定價為何不需要股票的真實期望報酬", "檢查無套利條件"],
+            "prerequisites": ["無套利", "複製組合", "折現", "選擇權 payoff"],
+            "outOfScope": ["Black-Scholes PDE 推導", "Greeks 的完整分析", "波動率交易策略", "個別證券建議"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual", "case_based"],
+            "canonicalTerms": ["避險比率", "風險中立機率", "折現期望值", "無套利區間"]
+          },
+          {
+            "chapterNumber": "3",
+            "title": "從多期二項樹到連續時間模型",
+            "focus": "理解多期複製、動態避險與連續時間極限的概念連結。",
+            "subtopics": ["倒推定價", "動態複製", "完備市場", "連續時間極限", "模型風險"],
+            "learningObjectives": ["執行多期倒推", "說明完備市場假設", "辨識模型限制"],
+            "prerequisites": ["一期間二項樹", "風險中立定價"],
+            "outOfScope": ["隨機微積分完整課程", "實際交易建議"],
+            "knowledgeType": "mathematical",
+            "secondaryKnowledgeTypes": ["conceptual", "empirical"],
+            "canonicalTerms": ["倒推定價", "動態避險", "模型風險"]
+          }
+        ]
+      },
+      "lexicalExpectations": {
+        "mustCover": ["無套利", "複製組合", "風險中立", "避險比率", "折現"],
+        "outOfScope": ["Black-Scholes PDE", "交易策略", "證券建議"]
+      }
+    }
+  ]
+}

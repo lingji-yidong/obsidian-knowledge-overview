@@ -1,4 +1,9 @@
 import type { KnowledgeDepth, KnowledgeType } from "./instructionalTypes";
+import type {
+  ReasoningEffort,
+  ThinkingMode,
+  Verbosity,
+} from "./chatCompletion";
 
 export interface MySettings {
   apiKey: string;
@@ -12,10 +17,10 @@ export interface MySettings {
   autoDetectKnowledgeType: boolean;
   knowledgeTypeOverride: KnowledgeType | "auto";
   minChapterChars: number;
-  autoExpandShortChapters: boolean;
   temperature: number | null;
-  reasoningEffort: "minimal" | "low" | "medium" | "high" | null;
-  verbosity: "low" | "medium" | "high" | null;
+  reasoningEffort: ReasoningEffort | null;
+  verbosity: Verbosity | null;
+  thinkingMode: ThinkingMode;
 }
 
 export const DEFAULT_SETTINGS: MySettings = {
@@ -24,19 +29,17 @@ export const DEFAULT_SETTINGS: MySettings = {
   apiBaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
   modelOutline: "gemini-3.5-flash",
   modelChapter: "gemini-3.5-flash",
-  maxCompletionTokens: 24000,
+  maxCompletionTokens: 16000,
   chapterConcurrency: 1,
   knowledgeDepth: "onboarding",
   autoDetectKnowledgeType: true,
   knowledgeTypeOverride: "auto",
-  minChapterChars: 9000,
-  autoExpandShortChapters: true,
-  temperature: 0.4,
+  minChapterChars: 8500,
+  temperature: null,
   reasoningEffort: null,
   verbosity: null,
+  thinkingMode: "auto",
 };
 
 export const MIN_CONCURRENCY = 1;
 export const MAX_CHAPTER_CONCURRENCY = 20;
-export const MAX_API_RETRIES = 2;
-export const RETRY_BASE_DELAY_MS = 1500;

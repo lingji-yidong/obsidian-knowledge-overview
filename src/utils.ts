@@ -6,6 +6,7 @@ export interface ChapterGenerationResult {
   fileName?: string;
   success: boolean;
   error?: string;
+  qualityWarnings?: string[];
 }
 
 const KNOWLEDGE_DEPTHS: readonly KnowledgeDepth[] = [

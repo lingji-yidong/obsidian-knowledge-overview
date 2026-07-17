@@ -1,0 +1,11 @@
+import "./api.test";
+import "./chapter-quality.test";
+import "./chapter-markdown.test";
+import "./chapter-numbering.test";
+import "./course-blueprint.test";
+import "./eval-local-checks.test";
+import "./eval-config.test";
+import "./generation-control.test";
+import "./generation-provenance.test";
+import "./prompts.test";
+import "./utils.test";

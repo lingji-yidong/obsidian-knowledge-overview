@@ -1,6 +1,6 @@
 {
   "name": "obsidian-knowledge-overview",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Generate structured subject overviews using AI.",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,10 @@
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "lint": "eslint .",
     "release:verify": "node verify-release.mjs",
-    "test": "node tests/run-tests.mjs",
+    "test": "node tests/run-tests.mjs && node --test tests/release-notes.test.mjs",
+    "eval:plan": "node eval/run.mjs plan",
+    "eval:generate": "node eval/run.mjs generate",
+    "eval:check": "node eval/run.mjs check",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [

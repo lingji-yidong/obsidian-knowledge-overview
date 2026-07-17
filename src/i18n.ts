@@ -23,6 +23,31 @@ export const LANGUAGE_OPTIONS: Record<string, string> = {
   ru: "Русский",
 };
 
+const REVIEW_QUESTION_HEADING_TEXT: Record<string, string> = {
+  en: "Review and interview questions",
+  zh: "复习与面试问题",
+  zh_tw: "複習與面試問題",
+  ja: "復習と面接の質問",
+  ko: "복습 및 면접 질문",
+  vi: "Câu hỏi ôn tập và phỏng vấn",
+  th: "คำถามทบทวนและสัมภาษณ์",
+  id: "Pertanyaan tinjauan dan wawancara",
+  ms: "Soalan ulang kaji dan temu duga",
+  hi: "पुनरावलोकन और साक्षात्कार प्रश्न",
+  ar: "أسئلة المراجعة والمقابلة",
+  de: "Wiederholungs- und Interviewfragen",
+  fr: "Questions de révision et d’entretien",
+  es: "Preguntas de repaso y entrevista",
+  it: "Domande di ripasso e colloquio",
+  pt: "Perguntas de revisão e entrevista",
+  nl: "Herhalings- en interviewvragen",
+  sv: "Repetitions- och intervjufrågor",
+  fi: "Kertaus- ja haastattelukysymykset",
+  pl: "Pytania powtórkowe i rekrutacyjne",
+  tr: "Tekrar ve mülakat soruları",
+  ru: "Вопросы для повторения и собеседования",
+};
+
 export interface HeaderText {
   outlineTitle: string;
   generatedAt: string;
@@ -33,6 +58,7 @@ export interface HeaderText {
 export interface UiText {
   generateKnowledge: string;
   resumeFailedChapters: string;
+  cancelActiveGeneration: string;
 }
 
 export interface SettingDescriptionText {
@@ -42,7 +68,6 @@ export interface SettingDescriptionText {
   chapterModel: string;
   knowledgeType: string;
   minimumChapterCharacters: string;
-  autoExpandShortChapters: string;
   maxCompletionTokens: string;
   temperature: string;
   reasoningEffort: string;
@@ -194,7 +219,7 @@ const HEADER_TEXT: Record<string, HeaderText> = {
   },
 };
 
-const UI_TEXT: Record<string, UiText> = {
+const UI_TEXT: Record<string, Omit<UiText, "cancelActiveGeneration">> = {
   en: {
     generateKnowledge: "Generate Knowledge Overview",
     resumeFailedChapters: "Resume Failed Chapter Generation",
@@ -293,7 +318,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM model for generating chapter details.",
     knowledgeType: "Use Auto for planning-based classification, or force a chapter structure.",
     minimumChapterCharacters: "Used by the quality evaluator and repair pass for long-form chapters.",
-    autoExpandShortChapters: "Run one repair pass when a chapter is too short or too glossary-like.",
     maxCompletionTokens: "Advanced. Output token limit passed as max_completion_tokens. Set a larger value if your provider truncates long chapters.",
     temperature: "Advanced. Leave empty to omit this provider option.",
     reasoningEffort: "Advanced provider-specific option. Leave unset unless your provider supports it.",
@@ -308,7 +332,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "用于生成章节内容的 LLM 模型。",
     knowledgeType: "使用 Auto 进行规划式分类，或强制指定章节结构。",
     minimumChapterCharacters: "供质量检查器和修复扩写流程判断长章节是否足够充实。",
-    autoExpandShortChapters: "当章节过短或太像术语表时，自动运行一次修复扩写。",
     maxCompletionTokens: "高级设置。作为 max_completion_tokens 传递的输出 token 上限；如果供应商截断长章节，请调大。",
     temperature: "高级设置。留空则不发送此供应商选项。",
     reasoningEffort: "高级供应商特定选项。除非供应商支持，否则保持未设置。",
@@ -323,7 +346,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "用於生成章節內容的 LLM 模型。",
     knowledgeType: "使用 Auto 進行規劃式分類，或強制指定章節結構。",
     minimumChapterCharacters: "供品質檢查器與修復擴寫流程判斷長章節是否足夠充實。",
-    autoExpandShortChapters: "當章節過短或太像術語表時，自動執行一次修復擴寫。",
     maxCompletionTokens: "進階設定。作為 max_completion_tokens 傳遞的輸出 token 上限；如果供應商截斷長章節，請調大。",
     temperature: "進階設定。留空則不送出此供應商選項。",
     reasoningEffort: "進階供應商特定選項。除非供應商支援，否則保持未設定。",
@@ -338,7 +360,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "章の詳細生成に使う LLM モデル。",
     knowledgeType: "Auto で計画ベースの分類を使うか、章構造を強制指定します。",
     minimumChapterCharacters: "長文の章が十分に充実しているかを品質評価と修復パスで判断するために使います。",
-    autoExpandShortChapters: "章が短すぎる、または用語集のようになった場合に、修復拡張を 1 回実行します。",
     maxCompletionTokens: "詳細設定。max_completion_tokens として渡す出力 token 上限です。長い章が切れる場合は大きくしてください。",
     temperature: "詳細設定。空欄にすると、このプロバイダーオプションは送信しません。",
     reasoningEffort: "詳細なプロバイダー固有オプションです。対応している場合だけ設定してください。",
@@ -353,7 +374,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "장 세부 내용을 생성하는 LLM 모델입니다.",
     knowledgeType: "Auto로 계획 기반 분류를 사용하거나 장 구조를 강제로 지정합니다.",
     minimumChapterCharacters: "긴 장이 충분히 충실한지 품질 평가기와 수정 확장 단계에서 판단하는 데 사용합니다.",
-    autoExpandShortChapters: "장이 너무 짧거나 용어집처럼 보이면 한 번의 수정 확장 단계를 실행합니다.",
     maxCompletionTokens: "고급 설정입니다. max_completion_tokens로 전달되는 출력 token 한도입니다. 긴 장이 잘리면 값을 높이세요.",
     temperature: "고급 설정입니다. 비워 두면 이 공급자 옵션을 보내지 않습니다.",
     reasoningEffort: "고급 공급자별 옵션입니다. 공급자가 지원할 때만 설정하세요.",
@@ -368,7 +388,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Mô hình LLM dùng để tạo nội dung chi tiết cho từng chương.",
     knowledgeType: "Dùng Auto để phân loại bằng bước lập kế hoạch, hoặc ép cấu trúc chương.",
     minimumChapterCharacters: "Dùng cho bộ đánh giá chất lượng và bước sửa mở rộng để kiểm tra chương dài có đủ nội dung hay không.",
-    autoExpandShortChapters: "Chạy một bước sửa mở rộng khi chương quá ngắn hoặc giống bảng thuật ngữ.",
     maxCompletionTokens: "Nâng cao. Giới hạn token đầu ra truyền qua max_completion_tokens. Tăng giá trị nếu nhà cung cấp cắt ngắn chương dài.",
     temperature: "Nâng cao. Để trống để không gửi tùy chọn nhà cung cấp này.",
     reasoningEffort: "Tùy chọn nâng cao theo nhà cung cấp. Chỉ đặt nếu nhà cung cấp hỗ trợ.",
@@ -383,7 +402,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "โมเดล LLM สำหรับสร้างรายละเอียดของบท",
     knowledgeType: "ใช้ Auto เพื่อจำแนกด้วยขั้นตอนวางแผน หรือบังคับใช้โครงสร้างบทที่กำหนด",
     minimumChapterCharacters: "ใช้โดยตัวประเมินคุณภาพและขั้นตอนซ่อมแซมเพื่อดูว่าบทยาวมีเนื้อหาเพียงพอหรือไม่",
-    autoExpandShortChapters: "รันการซ่อมแซมหนึ่งครั้งเมื่อบทสั้นเกินไปหรือเหมือนอภิธานศัพท์เกินไป",
     maxCompletionTokens: "ขั้นสูง ขีดจำกัด token เอาต์พุตที่ส่งเป็น max_completion_tokens เพิ่มค่านี้หากผู้ให้บริการตัดบทยาว",
     temperature: "ขั้นสูง เว้นว่างไว้เพื่อไม่ส่งตัวเลือกนี้ให้ผู้ให้บริการ",
     reasoningEffort: "ตัวเลือกขั้นสูงเฉพาะผู้ให้บริการ ตั้งค่าเฉพาะเมื่อผู้ให้บริการรองรับ",
@@ -398,7 +416,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Model LLM untuk membuat detail bab.",
     knowledgeType: "Gunakan Auto untuk klasifikasi berbasis perencanaan, atau paksa struktur bab.",
     minimumChapterCharacters: "Dipakai oleh evaluator kualitas dan pass perbaikan untuk menilai apakah bab panjang sudah cukup padat.",
-    autoExpandShortChapters: "Jalankan satu pass perbaikan saat bab terlalu pendek atau terlalu mirip glosarium.",
     maxCompletionTokens: "Lanjutan. Batas token keluaran yang dikirim sebagai max_completion_tokens. Naikkan jika penyedia memotong bab panjang.",
     temperature: "Lanjutan. Biarkan kosong untuk tidak mengirim opsi penyedia ini.",
     reasoningEffort: "Opsi lanjutan khusus penyedia. Biarkan tidak disetel kecuali penyedia mendukungnya.",
@@ -413,7 +430,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Model LLM untuk menjana butiran bab.",
     knowledgeType: "Gunakan Auto untuk klasifikasi berasaskan perancangan, atau paksa struktur bab.",
     minimumChapterCharacters: "Digunakan oleh penilai kualiti dan pusingan pembaikan untuk menilai sama ada bab panjang cukup lengkap.",
-    autoExpandShortChapters: "Jalankan satu pusingan pembaikan apabila bab terlalu pendek atau terlalu seperti glosari.",
     maxCompletionTokens: "Lanjutan. Had token output yang dihantar sebagai max_completion_tokens. Tingkatkan jika penyedia memotong bab panjang.",
     temperature: "Lanjutan. Biarkan kosong untuk tidak menghantar pilihan penyedia ini.",
     reasoningEffort: "Pilihan lanjutan khusus penyedia. Biarkan tidak ditetapkan kecuali penyedia menyokongnya.",
@@ -428,7 +444,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "अध्याय विवरण बनाने के लिए LLM मॉडल।",
     knowledgeType: "योजना-आधारित वर्गीकरण के लिए Auto उपयोग करें, या अध्याय संरचना को बाध्य करें।",
     minimumChapterCharacters: "लंबे अध्याय पर्याप्त रूप से विस्तृत हैं या नहीं, यह गुणवत्ता मूल्यांकन और सुधार चरण में जाँचने के लिए उपयोग होता है।",
-    autoExpandShortChapters: "जब अध्याय बहुत छोटा हो या शब्दावली-सूची जैसा लगे, तो एक सुधार विस्तार चरण चलाएँ।",
     maxCompletionTokens: "उन्नत। max_completion_tokens के रूप में भेजी जाने वाली आउटपुट token सीमा। यदि प्रदाता लंबे अध्याय काटता है तो इसे बढ़ाएँ।",
     temperature: "उन्नत। इस प्रदाता विकल्प को न भेजने के लिए खाली छोड़ें।",
     reasoningEffort: "उन्नत प्रदाता-विशिष्ट विकल्प। केवल तब सेट करें जब प्रदाता इसका समर्थन करता हो।",
@@ -443,7 +458,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "نموذج LLM المستخدم لإنشاء تفاصيل الفصول.",
     knowledgeType: "استخدم Auto للتصنيف المعتمد على التخطيط، أو افرض بنية فصل محددة.",
     minimumChapterCharacters: "يستخدمه مقيم الجودة ومرحلة الإصلاح لتحديد ما إذا كان الفصل الطويل كافيا.",
-    autoExpandShortChapters: "يشغّل مرحلة إصلاح واحدة عندما يكون الفصل قصيرا جدا أو شبيها بالقاموس.",
     maxCompletionTokens: "إعداد متقدم. حد رموز الإخراج المرسل باسم max_completion_tokens. ارفعه إذا كان المزوّد يقطع الفصول الطويلة.",
     temperature: "إعداد متقدم. اتركه فارغا لعدم إرسال هذا الخيار إلى المزوّد.",
     reasoningEffort: "خيار متقدم خاص بالمزوّد. اتركه غير مضبوط إلا إذا كان المزوّد يدعمه.",
@@ -458,7 +472,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM-Modell zum Erstellen von Kapiteldetails.",
     knowledgeType: "Auto für planungsbasierte Klassifikation verwenden oder eine Kapitelstruktur erzwingen.",
     minimumChapterCharacters: "Wird vom Qualitätsprüfer und Reparaturdurchlauf genutzt, um lange Kapitel auf ausreichende Dichte zu prüfen.",
-    autoExpandShortChapters: "Führt einen Reparaturdurchlauf aus, wenn ein Kapitel zu kurz oder zu glossarartig ist.",
     maxCompletionTokens: "Erweitert. Ausgabelimit für token, das als max_completion_tokens gesendet wird. Erhöhen, wenn lange Kapitel abgeschnitten werden.",
     temperature: "Erweitert. Leer lassen, um diese Anbieteroption nicht zu senden.",
     reasoningEffort: "Erweiterte anbieterspezifische Option. Nur setzen, wenn der Anbieter sie unterstützt.",
@@ -473,7 +486,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Modèle LLM utilisé pour générer les détails des chapitres.",
     knowledgeType: "Utilisez Auto pour une classification basée sur la planification, ou forcez une structure de chapitre.",
     minimumChapterCharacters: "Utilisé par l'évaluateur de qualité et le passage de réparation pour vérifier qu'un chapitre long est assez dense.",
-    autoExpandShortChapters: "Exécute un passage de réparation lorsqu'un chapitre est trop court ou trop proche d'un glossaire.",
     maxCompletionTokens: "Avancé. Limite de token de sortie transmise via max_completion_tokens. Augmentez-la si le fournisseur tronque les longs chapitres.",
     temperature: "Avancé. Laissez vide pour ne pas envoyer cette option fournisseur.",
     reasoningEffort: "Option avancée propre au fournisseur. Ne la définissez que si le fournisseur la prend en charge.",
@@ -488,7 +500,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Modelo LLM para generar detalles de capítulos.",
     knowledgeType: "Usa Auto para clasificación basada en planificación, o fuerza una estructura de capítulo.",
     minimumChapterCharacters: "Lo usan el evaluador de calidad y el paso de reparación para comprobar si los capítulos largos tienen suficiente contenido.",
-    autoExpandShortChapters: "Ejecuta un paso de reparación cuando un capítulo es demasiado corto o parece un glosario.",
     maxCompletionTokens: "Avanzado. Límite de token de salida enviado como max_completion_tokens. Auméntalo si el proveedor corta capítulos largos.",
     temperature: "Avanzado. Déjalo vacío para omitir esta opción del proveedor.",
     reasoningEffort: "Opción avanzada específica del proveedor. Déjala sin configurar salvo que tu proveedor la admita.",
@@ -503,7 +514,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Modello LLM per generare i dettagli dei capitoli.",
     knowledgeType: "Usa Auto per una classificazione basata sulla pianificazione, oppure forza una struttura di capitolo.",
     minimumChapterCharacters: "Usato dal valutatore di qualità e dal passaggio di riparazione per verificare se i capitoli lunghi sono abbastanza densi.",
-    autoExpandShortChapters: "Esegue un passaggio di riparazione quando un capitolo è troppo breve o troppo simile a un glossario.",
     maxCompletionTokens: "Avanzato. Limite di token in uscita inviato come max_completion_tokens. Aumentalo se il provider tronca i capitoli lunghi.",
     temperature: "Avanzato. Lascia vuoto per omettere questa opzione del provider.",
     reasoningEffort: "Opzione avanzata specifica del provider. Lasciala non impostata salvo supporto del provider.",
@@ -518,7 +528,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Modelo LLM para gerar detalhes dos capítulos.",
     knowledgeType: "Use Auto para classificação baseada em planejamento, ou force uma estrutura de capítulo.",
     minimumChapterCharacters: "Usado pelo avaliador de qualidade e pela etapa de reparo para verificar se capítulos longos têm conteúdo suficiente.",
-    autoExpandShortChapters: "Executa uma etapa de reparo quando um capítulo é curto demais ou parece um glossário.",
     maxCompletionTokens: "Avançado. Limite de token de saída enviado como max_completion_tokens. Aumente se o provedor truncar capítulos longos.",
     temperature: "Avançado. Deixe vazio para omitir esta opção do provedor.",
     reasoningEffort: "Opção avançada específica do provedor. Deixe sem definir a menos que o provedor suporte.",
@@ -533,7 +542,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM-model voor het genereren van hoofdstukdetails.",
     knowledgeType: "Gebruik Auto voor planning-gebaseerde classificatie, of forceer een hoofdstukstructuur.",
     minimumChapterCharacters: "Wordt gebruikt door de kwaliteitsbeoordelaar en reparatiestap om te controleren of lange hoofdstukken voldoende inhoud hebben.",
-    autoExpandShortChapters: "Voert één reparatiestap uit wanneer een hoofdstuk te kort is of te veel op een woordenlijst lijkt.",
     maxCompletionTokens: "Geavanceerd. Uitvoer-tokenlimiet die als max_completion_tokens wordt verzonden. Verhoog dit als de provider lange hoofdstukken afkapt.",
     temperature: "Geavanceerd. Laat leeg om deze provideroptie niet te verzenden.",
     reasoningEffort: "Geavanceerde provider-specifieke optie. Laat oningesteld tenzij uw provider dit ondersteunt.",
@@ -548,7 +556,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM-modell för att generera kapiteldetaljer.",
     knowledgeType: "Använd Auto för planeringsbaserad klassificering, eller tvinga en kapitelstruktur.",
     minimumChapterCharacters: "Används av kvalitetsutvärderaren och reparationssteget för att kontrollera att långa kapitel är tillräckligt fylliga.",
-    autoExpandShortChapters: "Kör ett reparationssteg när ett kapitel är för kort eller för likt en ordlista.",
     maxCompletionTokens: "Avancerat. Gräns för utdata-token som skickas som max_completion_tokens. Höj om leverantören kapar långa kapitel.",
     temperature: "Avancerat. Lämna tomt för att utelämna detta leverantörsalternativ.",
     reasoningEffort: "Avancerat leverantörsspecifikt alternativ. Lämna unset om inte leverantören stöder det.",
@@ -563,7 +570,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM-malli lukujen yksityiskohtien luomiseen.",
     knowledgeType: "Käytä Auto-valintaa suunnittelupohjaiseen luokitteluun tai pakota luvun rakenne.",
     minimumChapterCharacters: "Laadunarvioija ja korjausvaihe käyttävät tätä tarkistaakseen, ovatko pitkät luvut riittävän kattavia.",
-    autoExpandShortChapters: "Suorittaa yhden korjausvaiheen, kun luku on liian lyhyt tai liian sanastomainen.",
     maxCompletionTokens: "Lisäasetus. max_completion_tokens-kenttänä lähetettävä tulosteen token-raja. Kasvata arvoa, jos palveluntarjoaja katkaisee pitkät luvut.",
     temperature: "Lisäasetus. Jätä tyhjäksi, jos et halua lähettää tätä palveluntarjoajan asetusta.",
     reasoningEffort: "Edistynyt palveluntarjoajakohtainen asetus. Jätä asettamatta, ellei palveluntarjoaja tue sitä.",
@@ -578,7 +584,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Model LLM do generowania szczegółów rozdziałów.",
     knowledgeType: "Użyj Auto do klasyfikacji opartej na planowaniu albo wymuś strukturę rozdziału.",
     minimumChapterCharacters: "Używane przez ocenę jakości i krok naprawy, aby sprawdzić, czy długie rozdziały są wystarczająco treściwe.",
-    autoExpandShortChapters: "Uruchamia jeden krok naprawy, gdy rozdział jest zbyt krótki lub zbyt podobny do glosariusza.",
     maxCompletionTokens: "Zaawansowane. Limit token wyjściowych wysyłany jako max_completion_tokens. Zwiększ, jeśli dostawca ucina długie rozdziały.",
     temperature: "Zaawansowane. Zostaw puste, aby nie wysyłać tej opcji dostawcy.",
     reasoningEffort: "Zaawansowana opcja specyficzna dla dostawcy. Zostaw nieustawione, chyba że dostawca ją obsługuje.",
@@ -593,7 +598,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "Bölüm ayrıntıları oluşturmak için LLM modeli.",
     knowledgeType: "Planlama tabanlı sınıflandırma için Auto kullanın veya bölüm yapısını zorlayın.",
     minimumChapterCharacters: "Kalite değerlendirici ve onarım geçişi tarafından uzun bölümlerin yeterince dolu olup olmadığını kontrol etmek için kullanılır.",
-    autoExpandShortChapters: "Bölüm çok kısa veya sözlük benzeri olduğunda bir onarım geçişi çalıştırır.",
     maxCompletionTokens: "Gelişmiş. max_completion_tokens olarak gönderilen çıktı token sınırı. Sağlayıcı uzun bölümleri kesiyorsa artırın.",
     temperature: "Gelişmiş. Bu sağlayıcı seçeneğini göndermemek için boş bırakın.",
     reasoningEffort: "Gelişmiş sağlayıcıya özel seçenek. Sağlayıcı desteklemiyorsa ayarlamayın.",
@@ -608,7 +612,6 @@ const SETTING_DESCRIPTION_TEXT: Record<string, SettingDescriptionText> = {
     chapterModel: "LLM-модель для создания подробностей глав.",
     knowledgeType: "Используйте Auto для классификации на основе планирования или задайте структуру главы вручную.",
     minimumChapterCharacters: "Используется оценщиком качества и этапом исправления, чтобы проверить, достаточно ли содержательна длинная глава.",
-    autoExpandShortChapters: "Запускает один этап исправления, если глава слишком короткая или похожа на глоссарий.",
     maxCompletionTokens: "Расширенная настройка. Лимит выходных token, передаваемый как max_completion_tokens. Увеличьте, если провайдер обрезает длинные главы.",
     temperature: "Расширенная настройка. Оставьте пустым, чтобы не отправлять эту опцию провайдеру.",
     reasoningEffort: "Расширенная опция конкретного провайдера. Оставьте не заданной, если провайдер ее не поддерживает.",
@@ -782,16 +785,56 @@ export function getLanguageLabel(language: string): string {
   return LANGUAGE_OPTIONS[language] ?? language;
 }
 
+export function getReviewQuestionHeading(language: string): string {
+  return REVIEW_QUESTION_HEADING_TEXT[language] ??
+    REVIEW_QUESTION_HEADING_TEXT.en;
+}
+
 export function getHeaderText(language: string): HeaderText {
   return HEADER_TEXT[language] ?? HEADER_TEXT.en;
 }
 
 export function getUiText(language: string): UiText {
-  return UI_TEXT[language] ?? UI_TEXT.en;
+  const uiText = UI_TEXT[language] ?? UI_TEXT.en;
+  const cancelText: Record<string, string> = {
+    en: "Cancel active knowledge generation",
+    zh: "取消当前知识概览生成",
+    zh_tw: "取消目前知識概覽生成",
+  };
+
+  return {
+    ...uiText,
+    cancelActiveGeneration: cancelText[language] ?? cancelText.en,
+  };
 }
 
 export function getSettingDescriptionText(language: string): SettingDescriptionText {
-  return SETTING_DESCRIPTION_TEXT[language] ?? SETTING_DESCRIPTION_TEXT.en;
+  const descriptions =
+    SETTING_DESCRIPTION_TEXT[language] ?? SETTING_DESCRIPTION_TEXT.en;
+  const updatedDescriptions: Record<
+    string,
+    Pick<SettingDescriptionText, "knowledgeType" | "minimumChapterCharacters">
+  > = {
+    en: {
+      knowledgeType:
+        "Auto uses the course blueprint classification, or you can force a chapter structure.",
+      minimumChapterCharacters:
+        "Used by the local quality check. It never triggers another model request.",
+    },
+    zh: {
+      knowledgeType: "Auto 使用课程蓝图中的分类，也可以强制指定章节结构。",
+      minimumChapterCharacters:
+        "供本地质量检查使用，不会触发额外模型请求。",
+    },
+    zh_tw: {
+      knowledgeType: "Auto 使用課程藍圖中的分類，也可以強制指定章節結構。",
+      minimumChapterCharacters:
+        "供本地品質檢查使用，不會觸發額外模型請求。",
+    },
+  };
+  const updated = updatedDescriptions[language] ?? updatedDescriptions.en;
+
+  return { ...descriptions, ...updated };
 }
 
 export function getDefaultLabel(language: string): string {
