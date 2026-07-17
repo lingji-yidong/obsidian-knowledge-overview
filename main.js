@@ -3908,8 +3908,7 @@ function parseChapterTitles(outline) {
   const chapterPattern = /^\s*(\d+)\.\s*(.+?)(?:\s*$)/;
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed)
-      continue;
+    if (!trimmed) continue;
     const match = trimmed.match(chapterPattern);
     if (match) {
       const chapterNum = match[1];
