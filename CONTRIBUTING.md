@@ -31,8 +31,12 @@ Thanks for considering a contribution.
 
 ## Release Checklist
 
-1. Update `package.json` version.
+1. Update `CHANGELOG.md` for the release.
 2. Run `npm version <patch|minor|major>`.
-3. Run `npm run build`.
-4. Create a GitHub release whose tag matches the version, such as `0.0.1`.
-5. Attach `main.js`, `manifest.json`, and `styles.css`.
+3. Run `npm test`, `npm run build`, and `npm run release:verify`.
+4. Push the release commit and its numeric tag, such as `0.0.9`.
+5. Confirm that the release workflow creates the GitHub release and attaches
+   `main.js`, `manifest.json`, and `styles.css`.
+
+Release tags must match the version in `manifest.json` exactly and must not use
+a `v` prefix.
