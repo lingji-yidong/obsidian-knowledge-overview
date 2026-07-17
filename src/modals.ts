@@ -70,11 +70,11 @@ export class InputModal extends Modal {
     const depthHeader = depthGroup.createDiv({
       cls: "knowledge-depth-header",
     });
-    depthHeader.createEl("span", {
+    depthHeader.createSpan({
       cls: "knowledge-field-label",
       text: "Chapter depth",
     });
-    depthHeader.createEl("span", {
+    depthHeader.createSpan({
       cls: "knowledge-field-hint",
       text: "Choose intent for this run",
     });

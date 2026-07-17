@@ -180,7 +180,7 @@ export class SettingTab extends PluginSettingTab {
         text.inputEl.step = "0.1";
 
         return text
-          .setPlaceholder("omit")
+          .setPlaceholder("Omit")
           .setValue(
             this.plugin.settings.temperature === null
               ? ""

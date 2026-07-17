@@ -22,10 +22,18 @@ Thanks for considering a contribution.
    npm run build
    ```
 
+4. Run the automated checks:
+
+   ```bash
+   npm test
+   npm run lint
+   ```
+
 ## Pull Requests
 
 - Keep changes focused and describe the user-facing behavior.
-- Run `npm run build` before opening a pull request.
+- Run `npm test`, `npm run build`, and `npm run lint` before opening a pull
+  request.
 - Do not commit API keys, local vault data, or generated notes.
 - Keep `manifest.json`, `package.json`, and `versions.json` versions aligned.
 

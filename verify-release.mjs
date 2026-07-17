@@ -38,4 +38,4 @@ if (releaseVersion !== undefined) {
   }
 }
 
-console.log(`Release metadata verified for ${packageJson.version}`);
+process.stdout.write(`Release metadata verified for ${packageJson.version}\n`);

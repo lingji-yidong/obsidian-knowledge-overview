@@ -1925,13 +1925,16 @@ export function normalizeKnownMarkdownHeadings(
     return markdown;
   }
 
-  return markdown.replace(/^(#{1,6}\s+)(.+?)\s*$/gm, (line, prefix, title) => {
-    const normalizedTitle = normalizeHeadingText(title);
-    const key = HEADING_KEY_BY_ENGLISH_TITLE[normalizedTitle];
-    if (!key) {
-      return line;
-    }
+  return markdown.replace(
+    /^(#{1,6}\s+)(.+?)\s*$/gm,
+    (line: string, prefix: string, title: string) => {
+      const normalizedTitle = normalizeHeadingText(title);
+      const key = HEADING_KEY_BY_ENGLISH_TITLE[normalizedTitle];
+      if (!key) {
+        return line;
+      }
 
-    return `${prefix}${getSectionHeading(key, language)}`;
-  });
+      return `${prefix}${getSectionHeading(key, language)}`;
+    },
+  );
 }

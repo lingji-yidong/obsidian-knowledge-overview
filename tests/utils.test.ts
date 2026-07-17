@@ -5,7 +5,7 @@ import {
   parseFailedChapters,
 } from "../src/utils";
 
-test("parses every supported knowledge depth from failure report metadata", () => {
+void test("parses every supported knowledge depth from failure report metadata", () => {
   for (const depth of ["scan", "onboarding", "learn", "review"] as const) {
     const report = `---\nknowledgeDepth: ${depth}\n---\n`;
 
@@ -13,7 +13,7 @@ test("parses every supported knowledge depth from failure report metadata", () =
   }
 });
 
-test("returns null for missing or invalid knowledge depth metadata", () => {
+void test("returns null for missing or invalid knowledge depth metadata", () => {
   assert.equal(parseFailedChapterDepth("# Failed Chapters"), null);
   assert.equal(
     parseFailedChapterDepth("---\nknowledgeDepth: unsupported\n---"),
@@ -21,7 +21,7 @@ test("returns null for missing or invalid knowledge depth metadata", () => {
   );
 });
 
-test("parses failed chapters when report includes depth frontmatter", () => {
+void test("parses failed chapters when report includes depth frontmatter", () => {
   const report = [
     "---",
     "knowledgeDepth: review",

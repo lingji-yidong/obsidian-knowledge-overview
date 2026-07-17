@@ -490,7 +490,7 @@ export default class KnowledgePlugin extends Plugin {
 
   async resumeFailedChapters(courseName: string): Promise<void> {
     if (!this.settings.apiKey) {
-      new Notice("❌ API Key not set! Please configure it in settings.");
+      new Notice("❌ API key not set! Please configure it in settings.");
       return;
     }
 
@@ -592,7 +592,7 @@ export default class KnowledgePlugin extends Plugin {
     depth: KnowledgeDepth = DEFAULT_SETTINGS.knowledgeDepth,
   ) {
     if (!this.settings.apiKey) {
-      new Notice("❌ API Key not set! Please configure it in settings.");
+      new Notice("❌ API key not set! Please configure it in settings.");
       return;
     }
 
@@ -644,7 +644,7 @@ export default class KnowledgePlugin extends Plugin {
 
       const chapters = parseChapterTitles(outline);
       if (chapters.length === 0) {
-        new Notice("⚠️ No chapters found in outline");
+        new Notice("⚠️ no chapters found in outline");
         this.finishProgress("No chapters found");
         return;
       }

@@ -2124,14 +2124,17 @@ function normalizeKnownMarkdownHeadings(markdown, language) {
   if (language === "en") {
     return markdown;
   }
-  return markdown.replace(/^(#{1,6}\s+)(.+?)\s*$/gm, (line, prefix, title) => {
-    const normalizedTitle = normalizeHeadingText(title);
-    const key = HEADING_KEY_BY_ENGLISH_TITLE[normalizedTitle];
-    if (!key) {
-      return line;
+  return markdown.replace(
+    /^(#{1,6}\s+)(.+?)\s*$/gm,
+    (line, prefix, title) => {
+      const normalizedTitle = normalizeHeadingText(title);
+      const key = HEADING_KEY_BY_ENGLISH_TITLE[normalizedTitle];
+      if (!key) {
+        return line;
+      }
+      return `${prefix}${getSectionHeading(key, language)}`;
     }
-    return `${prefix}${getSectionHeading(key, language)}`;
-  });
+  );
 }
 
 // src/chapterQuality.ts
@@ -3482,11 +3485,11 @@ var InputModal = class extends import_obsidian2.Modal {
     const depthHeader = depthGroup.createDiv({
       cls: "knowledge-depth-header"
     });
-    depthHeader.createEl("span", {
+    depthHeader.createSpan({
       cls: "knowledge-field-label",
       text: "Chapter depth"
     });
-    depthHeader.createEl("span", {
+    depthHeader.createSpan({
       cls: "knowledge-field-hint",
       text: "Choose intent for this run"
     });
@@ -4067,7 +4070,7 @@ var SettingTab = class extends import_obsidian3.PluginSettingTab {
     new import_obsidian3.Setting(containerEl).setName("Temperature").setDesc(settingDescriptions.temperature).addText((text) => {
       text.inputEl.type = "number";
       text.inputEl.step = "0.1";
-      return text.setPlaceholder("omit").setValue(
+      return text.setPlaceholder("Omit").setValue(
         this.plugin.settings.temperature === null ? "" : String(this.plugin.settings.temperature)
       ).onChange(async (value) => {
         this.plugin.settings.temperature = parseOptionalNumber(value);
@@ -4486,7 +4489,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   async resumeFailedChapters(courseName) {
     var _a;
     if (!this.settings.apiKey) {
-      new import_obsidian4.Notice("\u274C API Key not set! Please configure it in settings.");
+      new import_obsidian4.Notice("\u274C API key not set! Please configure it in settings.");
       return;
     }
     const folderPath = (0, import_obsidian4.normalizePath)(courseName.trim());
@@ -4572,7 +4575,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
   }
   async generate(courseName, depth = DEFAULT_SETTINGS.knowledgeDepth) {
     if (!this.settings.apiKey) {
-      new import_obsidian4.Notice("\u274C API Key not set! Please configure it in settings.");
+      new import_obsidian4.Notice("\u274C API key not set! Please configure it in settings.");
       return;
     }
     new import_obsidian4.Notice(`\u{1F4DA} Generating: ${courseName}`);
@@ -4623,7 +4626,7 @@ ${outline}`;
       new import_obsidian4.Notice("\u2713 Outlines.md created");
       const chapters = parseChapterTitles(outline);
       if (chapters.length === 0) {
-        new import_obsidian4.Notice("\u26A0\uFE0F No chapters found in outline");
+        new import_obsidian4.Notice("\u26A0\uFE0F no chapters found in outline");
         this.finishProgress("No chapters found");
         return;
       }
