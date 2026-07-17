@@ -58,8 +58,8 @@ still depends on the configured provider and the device network environment.
 ### From Source
 
 ```bash
-git clone https://github.com/lingji-yidong/obsidian-knowledge-overview
-cd obsidian-knowledge-plugin
+git clone https://github.com/obafgkm42/obsidian-knowledge-overview.git
+cd obsidian-knowledge-overview
 npm install
 npm run build
 ```

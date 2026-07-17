@@ -15,7 +15,15 @@
     "study-notes",
     "interview-prep"
   ],
-  "author": "lingji-yidong",
+  "author": "obafgkm42",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/obafgkm42/obsidian-knowledge-overview.git"
+  },
+  "homepage": "https://github.com/obafgkm42/obsidian-knowledge-overview#readme",
+  "bugs": {
+    "url": "https://github.com/obafgkm42/obsidian-knowledge-overview/issues"
+  },
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.20.0",
