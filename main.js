@@ -39,7 +39,6 @@ var DEFAULT_SETTINGS = {
   modelOutline: "gemini-3.5-flash",
   modelChapter: "gemini-3.5-flash",
   maxCompletionTokens: 24e3,
-  concurrency: 1,
   chapterConcurrency: 1,
   knowledgeDepth: "onboarding",
   autoDetectKnowledgeType: true,
@@ -51,7 +50,6 @@ var DEFAULT_SETTINGS = {
   verbosity: null
 };
 var MIN_CONCURRENCY = 1;
-var MAX_COURSE_CONCURRENCY = 10;
 var MAX_CHAPTER_CONCURRENCY = 20;
 var MAX_API_RETRIES = 2;
 var RETRY_BASE_DELAY_MS = 1500;
@@ -2507,7 +2505,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Advanced. Leave empty to omit this provider option.",
     reasoningEffort: "Advanced provider-specific option. Leave unset unless your provider supports it.",
     verbosity: "Advanced provider-specific option. Leave unset unless your provider supports it.",
-    concurrency: "Manual concurrency for course-level API calls. Default is 1 for stability on free or rate-limited providers.",
     chapterConcurrency: "Manual concurrency for chapter generation. Default is 1; increase only if your provider is stable under parallel requests.",
     language: "Output language preference."
   },
@@ -2523,7 +2520,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u9AD8\u7EA7\u8BBE\u7F6E\u3002\u7559\u7A7A\u5219\u4E0D\u53D1\u9001\u6B64\u4F9B\u5E94\u5546\u9009\u9879\u3002",
     reasoningEffort: "\u9AD8\u7EA7\u4F9B\u5E94\u5546\u7279\u5B9A\u9009\u9879\u3002\u9664\u975E\u4F9B\u5E94\u5546\u652F\u6301\uFF0C\u5426\u5219\u4FDD\u6301\u672A\u8BBE\u7F6E\u3002",
     verbosity: "\u9AD8\u7EA7\u4F9B\u5E94\u5546\u7279\u5B9A\u9009\u9879\u3002\u9664\u975E\u4F9B\u5E94\u5546\u652F\u6301\uFF0C\u5426\u5219\u4FDD\u6301\u672A\u8BBE\u7F6E\u3002",
-    concurrency: "\u8BFE\u7A0B\u7EA7 API \u8C03\u7528\u7684\u624B\u52A8\u5E76\u53D1\u6570\u3002\u9ED8\u8BA4\u4E3A 1\uFF0C\u9002\u5408\u514D\u8D39\u6216\u9650\u901F\u4F9B\u5E94\u5546\u3002",
     chapterConcurrency: "\u7AE0\u8282\u751F\u6210\u7684\u624B\u52A8\u5E76\u53D1\u6570\u3002\u9ED8\u8BA4\u4E3A 1\uFF1B\u53EA\u6709\u4F9B\u5E94\u5546\u80FD\u7A33\u5B9A\u5904\u7406\u5E76\u884C\u8BF7\u6C42\u65F6\u624D\u63D0\u9AD8\u3002",
     language: "\u8F93\u51FA\u8BED\u8A00\u504F\u597D\u3002"
   },
@@ -2539,7 +2535,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u9032\u968E\u8A2D\u5B9A\u3002\u7559\u7A7A\u5247\u4E0D\u9001\u51FA\u6B64\u4F9B\u61C9\u5546\u9078\u9805\u3002",
     reasoningEffort: "\u9032\u968E\u4F9B\u61C9\u5546\u7279\u5B9A\u9078\u9805\u3002\u9664\u975E\u4F9B\u61C9\u5546\u652F\u63F4\uFF0C\u5426\u5247\u4FDD\u6301\u672A\u8A2D\u5B9A\u3002",
     verbosity: "\u9032\u968E\u4F9B\u61C9\u5546\u7279\u5B9A\u9078\u9805\u3002\u9664\u975E\u4F9B\u61C9\u5546\u652F\u63F4\uFF0C\u5426\u5247\u4FDD\u6301\u672A\u8A2D\u5B9A\u3002",
-    concurrency: "\u8AB2\u7A0B\u7D1A API \u547C\u53EB\u7684\u624B\u52D5\u4E26\u767C\u6578\u3002\u9810\u8A2D\u70BA 1\uFF0C\u9069\u5408\u514D\u8CBB\u6216\u9650\u901F\u4F9B\u61C9\u5546\u3002",
     chapterConcurrency: "\u7AE0\u7BC0\u751F\u6210\u7684\u624B\u52D5\u4E26\u767C\u6578\u3002\u9810\u8A2D\u70BA 1\uFF1B\u53EA\u6709\u4F9B\u61C9\u5546\u80FD\u7A69\u5B9A\u8655\u7406\u4E26\u884C\u8ACB\u6C42\u6642\u624D\u63D0\u9AD8\u3002",
     language: "\u8F38\u51FA\u8A9E\u8A00\u504F\u597D\u3002"
   },
@@ -2555,7 +2550,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u8A73\u7D30\u8A2D\u5B9A\u3002\u7A7A\u6B04\u306B\u3059\u308B\u3068\u3001\u3053\u306E\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u30AA\u30D7\u30B7\u30E7\u30F3\u306F\u9001\u4FE1\u3057\u307E\u305B\u3093\u3002",
     reasoningEffort: "\u8A73\u7D30\u306A\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u56FA\u6709\u30AA\u30D7\u30B7\u30E7\u30F3\u3067\u3059\u3002\u5BFE\u5FDC\u3057\u3066\u3044\u308B\u5834\u5408\u3060\u3051\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
     verbosity: "\u8A73\u7D30\u306A\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u56FA\u6709\u30AA\u30D7\u30B7\u30E7\u30F3\u3067\u3059\u3002\u5BFE\u5FDC\u3057\u3066\u3044\u308B\u5834\u5408\u3060\u3051\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
-    concurrency: "\u30B3\u30FC\u30B9\u5358\u4F4D API \u547C\u3073\u51FA\u3057\u306E\u624B\u52D5\u4E26\u5217\u6570\u3002\u7121\u6599\u307E\u305F\u306F\u30EC\u30FC\u30C8\u5236\u9650\u306E\u3042\u308B\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u3067\u306F\u65E2\u5B9A\u5024 1 \u304C\u5B89\u5B9A\u3057\u307E\u3059\u3002",
     chapterConcurrency: "\u7AE0\u751F\u6210\u306E\u624B\u52D5\u4E26\u5217\u6570\u3002\u65E2\u5B9A\u5024\u306F 1 \u3067\u3059\u3002\u30D7\u30ED\u30D0\u30A4\u30C0\u30FC\u304C\u4E26\u5217\u30EA\u30AF\u30A8\u30B9\u30C8\u306B\u5B89\u5B9A\u3057\u3066\u3044\u308B\u5834\u5408\u3060\u3051\u5897\u3084\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
     language: "\u51FA\u529B\u8A00\u8A9E\u306E\u8A2D\u5B9A\u3002"
   },
@@ -2571,7 +2565,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\uACE0\uAE09 \uC124\uC815\uC785\uB2C8\uB2E4. \uBE44\uC6CC \uB450\uBA74 \uC774 \uACF5\uAE09\uC790 \uC635\uC158\uC744 \uBCF4\uB0B4\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
     reasoningEffort: "\uACE0\uAE09 \uACF5\uAE09\uC790\uBCC4 \uC635\uC158\uC785\uB2C8\uB2E4. \uACF5\uAE09\uC790\uAC00 \uC9C0\uC6D0\uD560 \uB54C\uB9CC \uC124\uC815\uD558\uC138\uC694.",
     verbosity: "\uACE0\uAE09 \uACF5\uAE09\uC790\uBCC4 \uC635\uC158\uC785\uB2C8\uB2E4. \uACF5\uAE09\uC790\uAC00 \uC9C0\uC6D0\uD560 \uB54C\uB9CC \uC124\uC815\uD558\uC138\uC694.",
-    concurrency: "\uAC15\uC758 \uC218\uC900 API \uD638\uCD9C\uC758 \uC218\uB3D9 \uB3D9\uC2DC\uC131\uC785\uB2C8\uB2E4. \uBB34\uB8CC \uB610\uB294 \uC18D\uB3C4 \uC81C\uD55C \uACF5\uAE09\uC790\uC5D0\uC11C\uB294 \uAE30\uBCF8\uAC12 1\uC774 \uC548\uC815\uC801\uC785\uB2C8\uB2E4.",
     chapterConcurrency: "\uC7A5 \uC0DD\uC131\uC758 \uC218\uB3D9 \uB3D9\uC2DC\uC131\uC785\uB2C8\uB2E4. \uAE30\uBCF8\uAC12\uC740 1\uC774\uBA70, \uACF5\uAE09\uC790\uAC00 \uBCD1\uB82C \uC694\uCCAD\uC744 \uC548\uC815\uC801\uC73C\uB85C \uCC98\uB9AC\uD560 \uB54C\uB9CC \uC62C\uB9AC\uC138\uC694.",
     language: "\uCD9C\uB825 \uC5B8\uC5B4 \uC124\uC815\uC785\uB2C8\uB2E4."
   },
@@ -2587,7 +2580,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "N\xE2ng cao. \u0110\u1EC3 tr\u1ED1ng \u0111\u1EC3 kh\xF4ng g\u1EEDi t\xF9y ch\u1ECDn nh\xE0 cung c\u1EA5p n\xE0y.",
     reasoningEffort: "T\xF9y ch\u1ECDn n\xE2ng cao theo nh\xE0 cung c\u1EA5p. Ch\u1EC9 \u0111\u1EB7t n\u1EBFu nh\xE0 cung c\u1EA5p h\u1ED7 tr\u1EE3.",
     verbosity: "T\xF9y ch\u1ECDn n\xE2ng cao theo nh\xE0 cung c\u1EA5p. Ch\u1EC9 \u0111\u1EB7t n\u1EBFu nh\xE0 cung c\u1EA5p h\u1ED7 tr\u1EE3.",
-    concurrency: "S\u1ED1 l\u1EC7nh g\u1ECDi API c\u1EA5p kh\xF3a h\u1ECDc ch\u1EA1y song song th\u1EE7 c\xF4ng. M\u1EB7c \u0111\u1ECBnh l\xE0 1 \u0111\u1EC3 \u1ED5n \u0111\u1ECBnh v\u1EDBi nh\xE0 cung c\u1EA5p mi\u1EC5n ph\xED ho\u1EB7c gi\u1EDBi h\u1EA1n t\u1ED1c \u0111\u1ED9.",
     chapterConcurrency: "S\u1ED1 ch\u01B0\u01A1ng t\u1EA1o song song th\u1EE7 c\xF4ng. M\u1EB7c \u0111\u1ECBnh l\xE0 1; ch\u1EC9 t\u0103ng n\u1EBFu nh\xE0 cung c\u1EA5p x\u1EED l\xFD song song \u1ED5n \u0111\u1ECBnh.",
     language: "T\xF9y ch\u1ECDn ng\xF4n ng\u1EEF \u0111\u1EA7u ra."
   },
@@ -2603,7 +2595,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u0E02\u0E31\u0E49\u0E19\u0E2A\u0E39\u0E07 \u0E40\u0E27\u0E49\u0E19\u0E27\u0E48\u0E32\u0E07\u0E44\u0E27\u0E49\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E44\u0E21\u0E48\u0E2A\u0E48\u0E07\u0E15\u0E31\u0E27\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E19\u0E35\u0E49\u0E43\u0E2B\u0E49\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23",
     reasoningEffort: "\u0E15\u0E31\u0E27\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E02\u0E31\u0E49\u0E19\u0E2A\u0E39\u0E07\u0E40\u0E09\u0E1E\u0E32\u0E30\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23 \u0E15\u0E31\u0E49\u0E07\u0E04\u0E48\u0E32\u0E40\u0E09\u0E1E\u0E32\u0E30\u0E40\u0E21\u0E37\u0E48\u0E2D\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23\u0E23\u0E2D\u0E07\u0E23\u0E31\u0E1A",
     verbosity: "\u0E15\u0E31\u0E27\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E02\u0E31\u0E49\u0E19\u0E2A\u0E39\u0E07\u0E40\u0E09\u0E1E\u0E32\u0E30\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23 \u0E15\u0E31\u0E49\u0E07\u0E04\u0E48\u0E32\u0E40\u0E09\u0E1E\u0E32\u0E30\u0E40\u0E21\u0E37\u0E48\u0E2D\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23\u0E23\u0E2D\u0E07\u0E23\u0E31\u0E1A",
-    concurrency: "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E04\u0E33\u0E02\u0E2D API \u0E23\u0E30\u0E14\u0E31\u0E1A\u0E04\u0E2D\u0E23\u0E4C\u0E2A\u0E17\u0E35\u0E48\u0E23\u0E31\u0E19\u0E1E\u0E23\u0E49\u0E2D\u0E21\u0E01\u0E31\u0E19\u0E41\u0E1A\u0E1A\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E2D\u0E07 \u0E04\u0E48\u0E32\u0E40\u0E23\u0E34\u0E48\u0E21\u0E15\u0E49\u0E19\u0E04\u0E37\u0E2D 1 \u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E40\u0E2A\u0E16\u0E35\u0E22\u0E23\u0E01\u0E31\u0E1A\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23\u0E1F\u0E23\u0E35\u0E2B\u0E23\u0E37\u0E2D\u0E08\u0E33\u0E01\u0E31\u0E14\u0E2D\u0E31\u0E15\u0E23\u0E32",
     chapterConcurrency: "\u0E08\u0E33\u0E19\u0E27\u0E19\u0E1A\u0E17\u0E17\u0E35\u0E48\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E1E\u0E23\u0E49\u0E2D\u0E21\u0E01\u0E31\u0E19\u0E41\u0E1A\u0E1A\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E2D\u0E07 \u0E04\u0E48\u0E32\u0E40\u0E23\u0E34\u0E48\u0E21\u0E15\u0E49\u0E19\u0E04\u0E37\u0E2D 1 \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E40\u0E09\u0E1E\u0E32\u0E30\u0E40\u0E21\u0E37\u0E48\u0E2D\u0E1C\u0E39\u0E49\u0E43\u0E2B\u0E49\u0E1A\u0E23\u0E34\u0E01\u0E32\u0E23\u0E23\u0E2D\u0E07\u0E23\u0E31\u0E1A\u0E04\u0E33\u0E02\u0E2D\u0E02\u0E19\u0E32\u0E19\u0E44\u0E14\u0E49\u0E40\u0E2A\u0E16\u0E35\u0E22\u0E23",
     language: "\u0E20\u0E32\u0E29\u0E32\u0E17\u0E35\u0E48\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E40\u0E2D\u0E32\u0E15\u0E4C\u0E1E\u0E38\u0E15"
   },
@@ -2619,7 +2610,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Lanjutan. Biarkan kosong untuk tidak mengirim opsi penyedia ini.",
     reasoningEffort: "Opsi lanjutan khusus penyedia. Biarkan tidak disetel kecuali penyedia mendukungnya.",
     verbosity: "Opsi lanjutan khusus penyedia. Biarkan tidak disetel kecuali penyedia mendukungnya.",
-    concurrency: "Konkurensi manual untuk panggilan API tingkat kursus. Default 1 agar stabil pada penyedia gratis atau terbatas rate.",
     chapterConcurrency: "Konkurensi manual untuk pembuatan bab. Default 1; naikkan hanya jika penyedia stabil menangani permintaan paralel.",
     language: "Preferensi bahasa keluaran."
   },
@@ -2635,7 +2625,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Lanjutan. Biarkan kosong untuk tidak menghantar pilihan penyedia ini.",
     reasoningEffort: "Pilihan lanjutan khusus penyedia. Biarkan tidak ditetapkan kecuali penyedia menyokongnya.",
     verbosity: "Pilihan lanjutan khusus penyedia. Biarkan tidak ditetapkan kecuali penyedia menyokongnya.",
-    concurrency: "Konkuren manual untuk panggilan API peringkat kursus. Lalai ialah 1 untuk kestabilan pada penyedia percuma atau terhad kadar.",
     chapterConcurrency: "Konkuren manual untuk penjanaan bab. Lalai ialah 1; tingkatkan hanya jika penyedia stabil dengan permintaan selari.",
     language: "Keutamaan bahasa output."
   },
@@ -2651,7 +2640,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u0909\u0928\u094D\u0928\u0924\u0964 \u0907\u0938 \u092A\u094D\u0930\u0926\u093E\u0924\u093E \u0935\u093F\u0915\u0932\u094D\u092A \u0915\u094B \u0928 \u092D\u0947\u091C\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u0916\u093E\u0932\u0940 \u091B\u094B\u0921\u093C\u0947\u0902\u0964",
     reasoningEffort: "\u0909\u0928\u094D\u0928\u0924 \u092A\u094D\u0930\u0926\u093E\u0924\u093E-\u0935\u093F\u0936\u093F\u0937\u094D\u091F \u0935\u093F\u0915\u0932\u094D\u092A\u0964 \u0915\u0947\u0935\u0932 \u0924\u092C \u0938\u0947\u091F \u0915\u0930\u0947\u0902 \u091C\u092C \u092A\u094D\u0930\u0926\u093E\u0924\u093E \u0907\u0938\u0915\u093E \u0938\u092E\u0930\u094D\u0925\u0928 \u0915\u0930\u0924\u093E \u0939\u094B\u0964",
     verbosity: "\u0909\u0928\u094D\u0928\u0924 \u092A\u094D\u0930\u0926\u093E\u0924\u093E-\u0935\u093F\u0936\u093F\u0937\u094D\u091F \u0935\u093F\u0915\u0932\u094D\u092A\u0964 \u0915\u0947\u0935\u0932 \u0924\u092C \u0938\u0947\u091F \u0915\u0930\u0947\u0902 \u091C\u092C \u092A\u094D\u0930\u0926\u093E\u0924\u093E \u0907\u0938\u0915\u093E \u0938\u092E\u0930\u094D\u0925\u0928 \u0915\u0930\u0924\u093E \u0939\u094B\u0964",
-    concurrency: "\u0915\u094B\u0930\u094D\u0938-\u0938\u094D\u0924\u0930\u0940\u092F API \u0915\u0949\u0932 \u0915\u0947 \u0932\u093F\u090F \u092E\u0948\u0928\u0941\u0905\u0932 concurrency\u0964 \u092E\u0941\u092B\u093C\u094D\u0924 \u092F\u093E rate-limited \u092A\u094D\u0930\u0926\u093E\u0924\u093E\u0913\u0902 \u092A\u0930 \u0938\u094D\u0925\u093F\u0930\u0924\u093E \u0915\u0947 \u0932\u093F\u090F \u0921\u093F\u092B\u093C\u0949\u0932\u094D\u091F 1 \u0939\u0948\u0964",
     chapterConcurrency: "\u0905\u0927\u094D\u092F\u093E\u092F \u0928\u093F\u0930\u094D\u092E\u093E\u0923 \u0915\u0947 \u0932\u093F\u090F \u092E\u0948\u0928\u0941\u0905\u0932 concurrency\u0964 \u0921\u093F\u092B\u093C\u0949\u0932\u094D\u091F 1 \u0939\u0948; \u0915\u0947\u0935\u0932 \u0924\u092C \u092C\u0922\u093C\u093E\u090F\u0901 \u091C\u092C \u092A\u094D\u0930\u0926\u093E\u0924\u093E parallel requests \u092A\u0930 \u0938\u094D\u0925\u093F\u0930 \u0939\u094B\u0964",
     language: "\u0906\u0909\u091F\u092A\u0941\u091F \u092D\u093E\u0937\u093E \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E\u0964"
   },
@@ -2667,7 +2655,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u0625\u0639\u062F\u0627\u062F \u0645\u062A\u0642\u062F\u0645. \u0627\u062A\u0631\u0643\u0647 \u0641\u0627\u0631\u063A\u0627 \u0644\u0639\u062F\u0645 \u0625\u0631\u0633\u0627\u0644 \u0647\u0630\u0627 \u0627\u0644\u062E\u064A\u0627\u0631 \u0625\u0644\u0649 \u0627\u0644\u0645\u0632\u0648\u0651\u062F.",
     reasoningEffort: "\u062E\u064A\u0627\u0631 \u0645\u062A\u0642\u062F\u0645 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0632\u0648\u0651\u062F. \u0627\u062A\u0631\u0643\u0647 \u063A\u064A\u0631 \u0645\u0636\u0628\u0648\u0637 \u0625\u0644\u0627 \u0625\u0630\u0627 \u0643\u0627\u0646 \u0627\u0644\u0645\u0632\u0648\u0651\u062F \u064A\u062F\u0639\u0645\u0647.",
     verbosity: "\u062E\u064A\u0627\u0631 \u0645\u062A\u0642\u062F\u0645 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0632\u0648\u0651\u062F. \u0627\u062A\u0631\u0643\u0647 \u063A\u064A\u0631 \u0645\u0636\u0628\u0648\u0637 \u0625\u0644\u0627 \u0625\u0630\u0627 \u0643\u0627\u0646 \u0627\u0644\u0645\u0632\u0648\u0651\u062F \u064A\u062F\u0639\u0645\u0647.",
-    concurrency: "\u0639\u062F\u062F \u0637\u0644\u0628\u0627\u062A API \u0627\u0644\u0645\u062A\u0632\u0627\u0645\u0646\u0629 \u0639\u0644\u0649 \u0645\u0633\u062A\u0648\u0649 \u0627\u0644\u062F\u0648\u0631\u0629 \u064A\u062F\u0648\u064A\u0627. \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A 1 \u0644\u0644\u0627\u0633\u062A\u0642\u0631\u0627\u0631 \u0645\u0639 \u0627\u0644\u0645\u0632\u0648\u0651\u062F\u064A\u0646 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u064A\u0646 \u0623\u0648 \u0645\u062D\u062F\u0648\u062F\u064A \u0627\u0644\u0645\u0639\u062F\u0644.",
     chapterConcurrency: "\u0639\u062F\u062F \u0627\u0644\u0641\u0635\u0648\u0644 \u0627\u0644\u0645\u062A\u0632\u0627\u0645\u0646\u0629 \u0641\u064A \u0627\u0644\u062A\u0648\u0644\u064A\u062F \u064A\u062F\u0648\u064A\u0627. \u0627\u0644\u0627\u0641\u062A\u0631\u0627\u0636\u064A 1\u061B \u0632\u062F \u0627\u0644\u0642\u064A\u0645\u0629 \u0641\u0642\u0637 \u0625\u0630\u0627 \u0643\u0627\u0646 \u0627\u0644\u0645\u0632\u0648\u0651\u062F \u0645\u0633\u062A\u0642\u0631\u0627 \u0645\u0639 \u0627\u0644\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u0645\u062A\u0648\u0627\u0632\u064A\u0629.",
     language: "\u062A\u0641\u0636\u064A\u0644 \u0644\u063A\u0629 \u0627\u0644\u0625\u062E\u0631\u0627\u062C."
   },
@@ -2683,7 +2670,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Erweitert. Leer lassen, um diese Anbieteroption nicht zu senden.",
     reasoningEffort: "Erweiterte anbieterspezifische Option. Nur setzen, wenn der Anbieter sie unterst\xFCtzt.",
     verbosity: "Erweiterte anbieterspezifische Option. Nur setzen, wenn der Anbieter sie unterst\xFCtzt.",
-    concurrency: "Manuelle Parallelit\xE4t f\xFCr API-Aufrufe auf Kursebene. Standard ist 1 f\xFCr Stabilit\xE4t bei kostenlosen oder rate-limitierten Anbietern.",
     chapterConcurrency: "Manuelle Parallelit\xE4t f\xFCr Kapitelerzeugung. Standard ist 1; nur erh\xF6hen, wenn der Anbieter parallele Anfragen stabil verarbeitet.",
     language: "Bevorzugte Ausgabesprache."
   },
@@ -2699,7 +2685,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Avanc\xE9. Laissez vide pour ne pas envoyer cette option fournisseur.",
     reasoningEffort: "Option avanc\xE9e propre au fournisseur. Ne la d\xE9finissez que si le fournisseur la prend en charge.",
     verbosity: "Option avanc\xE9e propre au fournisseur. Ne la d\xE9finissez que si le fournisseur la prend en charge.",
-    concurrency: "Concurrence manuelle pour les appels API au niveau du cours. La valeur par d\xE9faut est 1 pour rester stable avec les fournisseurs gratuits ou limit\xE9s.",
     chapterConcurrency: "Concurrence manuelle pour la g\xE9n\xE9ration des chapitres. La valeur par d\xE9faut est 1; augmentez-la seulement si le fournisseur g\xE8re bien les requ\xEAtes parall\xE8les.",
     language: "Pr\xE9f\xE9rence de langue de sortie."
   },
@@ -2715,7 +2700,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Avanzado. D\xE9jalo vac\xEDo para omitir esta opci\xF3n del proveedor.",
     reasoningEffort: "Opci\xF3n avanzada espec\xEDfica del proveedor. D\xE9jala sin configurar salvo que tu proveedor la admita.",
     verbosity: "Opci\xF3n avanzada espec\xEDfica del proveedor. D\xE9jala sin configurar salvo que tu proveedor la admita.",
-    concurrency: "Concurrencia manual para llamadas API a nivel de curso. El valor predeterminado es 1 para estabilidad con proveedores gratuitos o limitados.",
     chapterConcurrency: "Concurrencia manual para generaci\xF3n de cap\xEDtulos. El valor predeterminado es 1; s\xFAbelo solo si el proveedor maneja bien solicitudes paralelas.",
     language: "Preferencia de idioma de salida."
   },
@@ -2731,7 +2715,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Avanzato. Lascia vuoto per omettere questa opzione del provider.",
     reasoningEffort: "Opzione avanzata specifica del provider. Lasciala non impostata salvo supporto del provider.",
     verbosity: "Opzione avanzata specifica del provider. Lasciala non impostata salvo supporto del provider.",
-    concurrency: "Concorrenza manuale per le chiamate API a livello di corso. Il valore predefinito \xE8 1 per stabilit\xE0 con provider gratuiti o limitati.",
     chapterConcurrency: "Concorrenza manuale per la generazione dei capitoli. Il valore predefinito \xE8 1; aumentala solo se il provider gestisce bene richieste parallele.",
     language: "Preferenza della lingua di output."
   },
@@ -2747,7 +2730,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Avan\xE7ado. Deixe vazio para omitir esta op\xE7\xE3o do provedor.",
     reasoningEffort: "Op\xE7\xE3o avan\xE7ada espec\xEDfica do provedor. Deixe sem definir a menos que o provedor suporte.",
     verbosity: "Op\xE7\xE3o avan\xE7ada espec\xEDfica do provedor. Deixe sem definir a menos que o provedor suporte.",
-    concurrency: "Concorr\xEAncia manual para chamadas de API no n\xEDvel do curso. O padr\xE3o \xE9 1 para estabilidade em provedores gratuitos ou com limite de taxa.",
     chapterConcurrency: "Concorr\xEAncia manual para gera\xE7\xE3o de cap\xEDtulos. O padr\xE3o \xE9 1; aumente somente se o provedor lidar bem com solicita\xE7\xF5es paralelas.",
     language: "Prefer\xEAncia de idioma de sa\xEDda."
   },
@@ -2763,7 +2745,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Geavanceerd. Laat leeg om deze provideroptie niet te verzenden.",
     reasoningEffort: "Geavanceerde provider-specifieke optie. Laat oningesteld tenzij uw provider dit ondersteunt.",
     verbosity: "Geavanceerde provider-specifieke optie. Laat oningesteld tenzij uw provider dit ondersteunt.",
-    concurrency: "Handmatige concurrency voor API-aanroepen op cursusniveau. Standaard is 1 voor stabiliteit bij gratis of rate-limited providers.",
     chapterConcurrency: "Handmatige concurrency voor hoofdstukgeneratie. Standaard is 1; verhoog alleen als de provider parallelle verzoeken stabiel verwerkt.",
     language: "Voorkeur voor uitvoertaal."
   },
@@ -2779,7 +2760,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Avancerat. L\xE4mna tomt f\xF6r att utel\xE4mna detta leverant\xF6rsalternativ.",
     reasoningEffort: "Avancerat leverant\xF6rsspecifikt alternativ. L\xE4mna unset om inte leverant\xF6ren st\xF6der det.",
     verbosity: "Avancerat leverant\xF6rsspecifikt alternativ. L\xE4mna unset om inte leverant\xF6ren st\xF6der det.",
-    concurrency: "Manuell concurrency f\xF6r API-anrop p\xE5 kursniv\xE5. Standard \xE4r 1 f\xF6r stabilitet hos gratis eller rate-limited leverant\xF6rer.",
     chapterConcurrency: "Manuell concurrency f\xF6r kapitelgenerering. Standard \xE4r 1; h\xF6j bara om leverant\xF6ren hanterar parallella f\xF6rfr\xE5gningar stabilt.",
     language: "Inst\xE4llning f\xF6r utdataspr\xE5k."
   },
@@ -2795,7 +2775,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Lis\xE4asetus. J\xE4t\xE4 tyhj\xE4ksi, jos et halua l\xE4hett\xE4\xE4 t\xE4t\xE4 palveluntarjoajan asetusta.",
     reasoningEffort: "Edistynyt palveluntarjoajakohtainen asetus. J\xE4t\xE4 asettamatta, ellei palveluntarjoaja tue sit\xE4.",
     verbosity: "Edistynyt palveluntarjoajakohtainen asetus. J\xE4t\xE4 asettamatta, ellei palveluntarjoaja tue sit\xE4.",
-    concurrency: "Manuaalinen concurrency kurssitason API-kutsuille. Oletus on 1 vakauden vuoksi ilmaisilla tai nopeusrajoitetuilla palveluilla.",
     chapterConcurrency: "Manuaalinen concurrency lukujen generointiin. Oletus on 1; nosta vain, jos palveluntarjoaja k\xE4sittelee rinnakkaispyynn\xF6t vakaasti.",
     language: "Tulostekielen asetus."
   },
@@ -2811,7 +2790,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Zaawansowane. Zostaw puste, aby nie wysy\u0142a\u0107 tej opcji dostawcy.",
     reasoningEffort: "Zaawansowana opcja specyficzna dla dostawcy. Zostaw nieustawione, chyba \u017Ce dostawca j\u0105 obs\u0142uguje.",
     verbosity: "Zaawansowana opcja specyficzna dla dostawcy. Zostaw nieustawione, chyba \u017Ce dostawca j\u0105 obs\u0142uguje.",
-    concurrency: "R\u0119czna concurrency dla wywo\u0142a\u0144 API na poziomie kursu. Domy\u015Blnie 1 dla stabilno\u015Bci u darmowych lub limitowanych dostawc\xF3w.",
     chapterConcurrency: "R\u0119czna concurrency dla generowania rozdzia\u0142\xF3w. Domy\u015Blnie 1; zwi\u0119kszaj tylko, gdy dostawca stabilnie obs\u0142uguje r\xF3wnoleg\u0142e \u017C\u0105dania.",
     language: "Preferowany j\u0119zyk wyj\u015Bciowy."
   },
@@ -2827,7 +2805,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "Geli\u015Fmi\u015F. Bu sa\u011Flay\u0131c\u0131 se\xE7ene\u011Fini g\xF6ndermemek i\xE7in bo\u015F b\u0131rak\u0131n.",
     reasoningEffort: "Geli\u015Fmi\u015F sa\u011Flay\u0131c\u0131ya \xF6zel se\xE7enek. Sa\u011Flay\u0131c\u0131 desteklemiyorsa ayarlamay\u0131n.",
     verbosity: "Geli\u015Fmi\u015F sa\u011Flay\u0131c\u0131ya \xF6zel se\xE7enek. Sa\u011Flay\u0131c\u0131 desteklemiyorsa ayarlamay\u0131n.",
-    concurrency: "Ders d\xFCzeyi API \xE7a\u011Fr\u0131lar\u0131 i\xE7in manuel concurrency. \xDCcretsiz veya h\u0131z s\u0131n\u0131rl\u0131 sa\u011Flay\u0131c\u0131larda kararl\u0131l\u0131k i\xE7in varsay\u0131lan 1'dir.",
     chapterConcurrency: "B\xF6l\xFCm \xFCretimi i\xE7in manuel concurrency. Varsay\u0131lan 1'dir; yaln\u0131zca sa\u011Flay\u0131c\u0131 paralel isteklerde kararl\u0131ysa art\u0131r\u0131n.",
     language: "\xC7\u0131kt\u0131 dili tercihi."
   },
@@ -2843,7 +2820,6 @@ var SETTING_DESCRIPTION_TEXT = {
     temperature: "\u0420\u0430\u0441\u0448\u0438\u0440\u0435\u043D\u043D\u0430\u044F \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0430. \u041E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u043F\u0443\u0441\u0442\u044B\u043C, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0442\u044C \u044D\u0442\u0443 \u043E\u043F\u0446\u0438\u044E \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440\u0443.",
     reasoningEffort: "\u0420\u0430\u0441\u0448\u0438\u0440\u0435\u043D\u043D\u0430\u044F \u043E\u043F\u0446\u0438\u044F \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u043E\u0433\u043E \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440\u0430. \u041E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043D\u043E\u0439, \u0435\u0441\u043B\u0438 \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440 \u0435\u0435 \u043D\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442.",
     verbosity: "\u0420\u0430\u0441\u0448\u0438\u0440\u0435\u043D\u043D\u0430\u044F \u043E\u043F\u0446\u0438\u044F \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u043E\u0433\u043E \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440\u0430. \u041E\u0441\u0442\u0430\u0432\u044C\u0442\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043D\u043E\u0439, \u0435\u0441\u043B\u0438 \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440 \u0435\u0435 \u043D\u0435 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442.",
-    concurrency: "\u0420\u0443\u0447\u043D\u0430\u044F concurrency \u0434\u043B\u044F API-\u0432\u044B\u0437\u043E\u0432\u043E\u0432 \u043D\u0430 \u0443\u0440\u043E\u0432\u043D\u0435 \u043A\u0443\u0440\u0441\u0430. \u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E 1 \u0434\u043B\u044F \u0441\u0442\u0430\u0431\u0438\u043B\u044C\u043D\u043E\u0441\u0442\u0438 \u0443 \u0431\u0435\u0441\u043F\u043B\u0430\u0442\u043D\u044B\u0445 \u0438\u043B\u0438 \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u043D\u044B\u0445 \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440\u043E\u0432.",
     chapterConcurrency: "\u0420\u0443\u0447\u043D\u0430\u044F concurrency \u0434\u043B\u044F \u0433\u0435\u043D\u0435\u0440\u0430\u0446\u0438\u0438 \u0433\u043B\u0430\u0432. \u041F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E 1; \u0443\u0432\u0435\u043B\u0438\u0447\u0438\u0432\u0430\u0439\u0442\u0435 \u0442\u043E\u043B\u044C\u043A\u043E \u0435\u0441\u043B\u0438 \u043F\u0440\u043E\u0432\u0430\u0439\u0434\u0435\u0440 \u0441\u0442\u0430\u0431\u0438\u043B\u044C\u043D\u043E \u043E\u0431\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u0435\u0442 \u043F\u0430\u0440\u0430\u043B\u043B\u0435\u043B\u044C\u043D\u044B\u0435 \u0437\u0430\u043F\u0440\u043E\u0441\u044B.",
     language: "\u041F\u0440\u0435\u0434\u043F\u043E\u0447\u0442\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0439 \u044F\u0437\u044B\u043A \u0432\u044B\u0432\u043E\u0434\u0430."
   }
@@ -4121,20 +4097,6 @@ var SettingTab = class extends import_obsidian3.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian3.Setting(containerEl).setName("Concurrency").setDesc(settingDescriptions.concurrency).addText((text) => {
-      text.inputEl.type = "number";
-      text.inputEl.min = String(MIN_CONCURRENCY);
-      text.inputEl.max = String(MAX_COURSE_CONCURRENCY);
-      text.inputEl.step = "1";
-      return text.setPlaceholder(String(DEFAULT_SETTINGS.concurrency)).setValue(String(this.plugin.settings.concurrency)).onChange(async (value) => {
-        this.plugin.settings.concurrency = clampInteger(
-          Number(value),
-          MIN_CONCURRENCY,
-          MAX_COURSE_CONCURRENCY
-        );
-        await this.plugin.saveSettings();
-      });
-    });
     new import_obsidian3.Setting(containerEl).setName("Chapter concurrency").setDesc(settingDescriptions.chapterConcurrency).addText((text) => {
       text.inputEl.type = "number";
       text.inputEl.min = String(MIN_CONCURRENCY);
@@ -4195,11 +4157,6 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     var _a;
     const loadedSettings = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings != null ? loadedSettings : {});
-    this.settings.concurrency = clampInteger(
-      this.settings.concurrency,
-      MIN_CONCURRENCY,
-      MAX_COURSE_CONCURRENCY
-    );
     this.settings.chapterConcurrency = clampInteger(
       this.settings.chapterConcurrency,
       MIN_CONCURRENCY,

@@ -7,7 +7,6 @@ export interface MySettings {
   modelOutline: string;
   modelChapter: string;
   maxCompletionTokens: number | null;
-  concurrency: number;
   chapterConcurrency: number;
   knowledgeDepth: KnowledgeDepth;
   autoDetectKnowledgeType: boolean;
@@ -26,7 +25,6 @@ export const DEFAULT_SETTINGS: MySettings = {
   modelOutline: "gemini-3.5-flash",
   modelChapter: "gemini-3.5-flash",
   maxCompletionTokens: 24000,
-  concurrency: 1,
   chapterConcurrency: 1,
   knowledgeDepth: "onboarding",
   autoDetectKnowledgeType: true,
@@ -39,7 +37,6 @@ export const DEFAULT_SETTINGS: MySettings = {
 };
 
 export const MIN_CONCURRENCY = 1;
-export const MAX_COURSE_CONCURRENCY = 10;
 export const MAX_CHAPTER_CONCURRENCY = 20;
 export const MAX_API_RETRIES = 2;
 export const RETRY_BASE_DELAY_MS = 1500;

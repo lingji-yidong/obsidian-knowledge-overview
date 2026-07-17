@@ -25,7 +25,7 @@ notes for background learning, course review, and research preparation.
   bilingual Markdown headings.
 - Render formulas with Obsidian-compatible KaTeX blocks.
 - Configure API base URL, models, knowledge type behavior, output limits,
-  provider-specific options, and manual concurrency.
+  provider-specific options, and chapter concurrency.
 - Show generation progress in the status bar and an updateable notice for
   mobile.
 - Retry transient API failures and write failed chapters to `Failed_Chapters.md`.
@@ -120,13 +120,12 @@ Signal Processing/
   provider supports it.
 - `Verbosity`: optional provider-specific setting. Only use it if your provider
   supports it.
-- `Concurrency`: manual course-level concurrency, default `1`.
 - `Chapter concurrency`: manual chapter-generation concurrency, default `1`.
 - `Language`: target output language.
 
 The default settings favor stability on free or rate-limited providers. Keep
-concurrency small unless your provider is stable under parallel requests and
-has sufficient rate limits.
+chapter concurrency small unless your provider is stable under parallel
+requests and has sufficient rate limits.
 
 Medium-sized or stronger models usually generate richer chapter notes than
 small or lite models. Very small models may follow the structure but produce

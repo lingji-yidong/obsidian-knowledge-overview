@@ -39,7 +39,6 @@ import {
   DEFAULT_SETTINGS,
   MAX_API_RETRIES,
   MAX_CHAPTER_CONCURRENCY,
-  MAX_COURSE_CONCURRENCY,
   MIN_CONCURRENCY,
   RETRY_BASE_DELAY_MS,
   type MySettings,
@@ -98,11 +97,6 @@ export default class KnowledgePlugin extends Plugin {
   async loadSettings() {
     const loadedSettings = (await this.loadData()) as Partial<MySettings> | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings ?? {});
-    this.settings.concurrency = clampInteger(
-      this.settings.concurrency,
-      MIN_CONCURRENCY,
-      MAX_COURSE_CONCURRENCY,
-    );
     this.settings.chapterConcurrency = clampInteger(
       this.settings.chapterConcurrency,
       MIN_CONCURRENCY,

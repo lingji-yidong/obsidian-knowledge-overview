@@ -7,7 +7,6 @@ import {
 import {
   DEFAULT_SETTINGS,
   MAX_CHAPTER_CONCURRENCY,
-  MAX_COURSE_CONCURRENCY,
   MIN_CONCURRENCY,
 } from "./settings";
 import { clampInteger, parseOptionalPositiveInteger } from "./utils";
@@ -227,28 +226,6 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.verbosity =
               value === "" ? null : (value as "low" | "medium" | "high");
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Concurrency")
-      .setDesc(settingDescriptions.concurrency)
-      .addText((text) => {
-        text.inputEl.type = "number";
-        text.inputEl.min = String(MIN_CONCURRENCY);
-        text.inputEl.max = String(MAX_COURSE_CONCURRENCY);
-        text.inputEl.step = "1";
-
-        return text
-          .setPlaceholder(String(DEFAULT_SETTINGS.concurrency))
-          .setValue(String(this.plugin.settings.concurrency))
-          .onChange(async (value) => {
-            this.plugin.settings.concurrency = clampInteger(
-              Number(value),
-              MIN_CONCURRENCY,
-              MAX_COURSE_CONCURRENCY,
-            );
             await this.plugin.saveSettings();
           });
       });
