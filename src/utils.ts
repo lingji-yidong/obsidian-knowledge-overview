@@ -1,3 +1,5 @@
+import type { KnowledgeDepth } from "./instructionalTypes";
+
 export interface ChapterGenerationResult {
   chapterNum: string;
   title: string;
@@ -5,6 +7,13 @@ export interface ChapterGenerationResult {
   success: boolean;
   error?: string;
 }
+
+const KNOWLEDGE_DEPTHS: readonly KnowledgeDepth[] = [
+  "scan",
+  "onboarding",
+  "learn",
+  "review",
+];
 
 export function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -79,6 +88,15 @@ export function parseFailedChapters(report: string): Array<[string, string]> {
   return chapters;
 }
 
+export function parseFailedChapterDepth(
+  report: string,
+): KnowledgeDepth | null {
+  const match = report.match(/^knowledgeDepth:\s*(\S+)\s*$/m);
+  const value = match?.[1];
+
+  return KNOWLEDGE_DEPTHS.find((depth) => depth === value) ?? null;
+}
+
 export class Semaphore {
   private permits: number;
   private queue: Array<() => void> = [];
@@ -115,4 +133,3 @@ export class Semaphore {
     }
   }
 }
-

@@ -3894,6 +3894,12 @@ ${existingChapter}`;
 var import_obsidian3 = require("obsidian");
 
 // src/utils.ts
+var KNOWLEDGE_DEPTHS2 = [
+  "scan",
+  "onboarding",
+  "learn",
+  "review"
+];
 function clampInteger(value, min, max) {
   if (!Number.isFinite(value)) {
     return min;
@@ -3950,6 +3956,12 @@ function parseFailedChapters(report) {
     chapters.push([match[1], match[2].trim()]);
   }
   return chapters;
+}
+function parseFailedChapterDepth(report) {
+  var _a;
+  const match = report.match(/^knowledgeDepth:\s*(\S+)\s*$/m);
+  const value = match == null ? void 0 : match[1];
+  return (_a = KNOWLEDGE_DEPTHS2.find((depth) => depth === value)) != null ? _a : null;
 }
 var Semaphore = class {
   constructor(permits) {
@@ -4468,11 +4480,15 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
       return result;
     });
   }
-  async writeFailureReport(courseFolder, courseName, failedChapters) {
+  async writeFailureReport(courseFolder, courseName, depth, failedChapters) {
     if (failedChapters.length === 0) {
       return;
     }
     const content = [
+      "---",
+      `knowledgeDepth: ${depth}`,
+      "---",
+      "",
       `# ${courseName} Failed Chapters`,
       "",
       `Generated at: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
@@ -4512,6 +4528,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     }
   }
   async resumeFailedChapters(courseName) {
+    var _a;
     if (!this.settings.apiKey) {
       new import_obsidian4.Notice("\u274C API Key not set! Please configure it in settings.");
       return;
@@ -4534,6 +4551,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
     }
     const report = await this.app.vault.read(reportFile);
     const chapters = parseFailedChapters(report);
+    const depth = (_a = parseFailedChapterDepth(report)) != null ? _a : DEFAULT_SETTINGS.knowledgeDepth;
     if (chapters.length === 0) {
       new import_obsidian4.Notice("No failed chapters found to resume");
       this.finishProgress("No failed chapters found");
@@ -4563,7 +4581,7 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
             chapterInfo,
             courseFolder.path,
             chapterSem,
-            DEFAULT_SETTINGS.knowledgeDepth,
+            depth,
             updateProgress
           )
         )
@@ -4571,7 +4589,12 @@ var KnowledgePlugin = class extends import_obsidian4.Plugin {
       const failedResults = results.filter((result) => !result.success);
       const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
-        await this.writeFailureReport(courseFolder, courseFolder.path, failedResults);
+        await this.writeFailureReport(
+          courseFolder,
+          courseFolder.path,
+          depth,
+          failedResults
+        );
         new import_obsidian4.Notice(
           `\u26A0\uFE0F Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
           1e4
@@ -4676,7 +4699,12 @@ ${outline}`;
       );
       const results = await Promise.all(tasks);
       const failedResults = results.filter((result) => !result.success);
-      await this.writeFailureReport(courseFolder, courseName, failedResults);
+      await this.writeFailureReport(
+        courseFolder,
+        courseName,
+        depth,
+        failedResults
+      );
       const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
         new import_obsidian4.Notice(

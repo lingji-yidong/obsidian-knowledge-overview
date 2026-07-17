@@ -50,6 +50,7 @@ import {
   clampInteger,
   errorToMessage,
   parseChapterTitles,
+  parseFailedChapterDepth,
   parseFailedChapters,
   parseOptionalPositiveInteger,
   sleep,
@@ -439,6 +440,7 @@ export default class KnowledgePlugin extends Plugin {
   async writeFailureReport(
     courseFolder: TFolder,
     courseName: string,
+    depth: KnowledgeDepth,
     failedChapters: ChapterGenerationResult[],
   ): Promise<void> {
     if (failedChapters.length === 0) {
@@ -446,6 +448,10 @@ export default class KnowledgePlugin extends Plugin {
     }
 
     const content = [
+      "---",
+      `knowledgeDepth: ${depth}`,
+      "---",
+      "",
       `# ${courseName} Failed Chapters`,
       "",
       `Generated at: ${new Date().toLocaleString()}`,
@@ -515,6 +521,8 @@ export default class KnowledgePlugin extends Plugin {
 
     const report = await this.app.vault.read(reportFile);
     const chapters = parseFailedChapters(report);
+    const depth =
+      parseFailedChapterDepth(report) ?? DEFAULT_SETTINGS.knowledgeDepth;
 
     if (chapters.length === 0) {
       new Notice("No failed chapters found to resume");
@@ -549,7 +557,7 @@ export default class KnowledgePlugin extends Plugin {
             chapterInfo,
             courseFolder.path,
             chapterSem,
-            DEFAULT_SETTINGS.knowledgeDepth,
+            depth,
             updateProgress,
           ),
         ),
@@ -559,7 +567,12 @@ export default class KnowledgePlugin extends Plugin {
       const successCount = results.length - failedResults.length;
 
       if (failedResults.length > 0) {
-        await this.writeFailureReport(courseFolder, courseFolder.path, failedResults);
+        await this.writeFailureReport(
+          courseFolder,
+          courseFolder.path,
+          depth,
+          failedResults,
+        );
         new Notice(
           `⚠️ Resume finished: ${successCount}/${chapters.length} chapters generated. See Failed_Chapters.md`,
           10000,
@@ -673,7 +686,12 @@ export default class KnowledgePlugin extends Plugin {
 
       const results = await Promise.all(tasks);
       const failedResults = results.filter((result) => !result.success);
-      await this.writeFailureReport(courseFolder, courseName, failedResults);
+      await this.writeFailureReport(
+        courseFolder,
+        courseName,
+        depth,
+        failedResults,
+      );
 
       const successCount = results.length - failedResults.length;
       if (failedResults.length > 0) {
