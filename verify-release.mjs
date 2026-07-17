@@ -7,7 +7,9 @@ function readJson(path) {
 const packageJson = readJson("package.json");
 const manifest = readJson("manifest.json");
 const versions = readJson("versions.json");
-const releaseVersion = process.argv[2] ?? process.env.GITHUB_REF_NAME;
+// Only release jobs pass a tag explicitly. Branch CI should verify file
+// consistency without treating GITHUB_REF_NAME (for example, "main") as a tag.
+const releaseVersion = process.argv[2];
 const semanticVersionPattern = /^\d+\.\d+\.\d+$/;
 
 if (!semanticVersionPattern.test(packageJson.version)) {
