@@ -150,6 +150,54 @@ void test("uses the marked QA boundary instead of earlier numbered body lists", 
   assert.equal(report.hasQaSectionBoundary, true);
 });
 
+void test("keeps the final terminology table outside QA parsing", () => {
+  const text = [
+    "## Sampling limits",
+    "取樣率 (sampling rate) determines whether 混疊 (aliasing) occurs.",
+    "x".repeat(150),
+    "## Review questions <!-- qa-section -->",
+    "1. Why does aliasing occur? <!-- source: Sampling limits -->",
+    [
+      "## 關鍵術語對照 <!-- terminology-section -->",
+      "| 繁體中文 | English |",
+      "| --- | --- |",
+      "| 取樣率 | sampling rate |",
+      "| 混疊 | aliasing |",
+      "| 頻譜 | spectrum |",
+      "| 奈奎斯特頻率 | Nyquist frequency |",
+      "| 抗混疊濾波器 | anti-aliasing filter |",
+    ].join("\n"),
+  ].join("\n\n");
+  const report = evaluateChapterQuality(text, TEST_DENSITY);
+
+  assert.equal(report.questionCount, 1);
+  assert.equal(report.qaAnchorCount, 1);
+  assert.equal(report.hasTerminologySectionBoundary, true);
+  assert.equal(report.hasTerminologyTable, true);
+  assert.equal(report.terminologyRowCount, 5);
+  assert.doesNotMatch(
+    getChapterQualityWarnings(report).join("\n"),
+    /terminology/,
+  );
+});
+
+void test("warns when the required final terminology table is missing", () => {
+  const text = [
+    "## Sampling limits",
+    "x".repeat(150),
+    "## Review questions <!-- qa-section -->",
+    "1. Why? <!-- source: Sampling limits -->",
+  ].join("\n\n");
+  const report = evaluateChapterQuality(text, TEST_DENSITY);
+
+  assert.equal(report.hasTerminologySectionBoundary, false);
+  assert.ok(
+    getChapterQualityWarnings(report).includes(
+      "missing final terminology section boundary",
+    ),
+  );
+});
+
 void test("legacy QA parsing does not merge numbered lists across body prose", () => {
   const text = [
     "## Mechanism",

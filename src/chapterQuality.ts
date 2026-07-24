@@ -8,6 +8,8 @@ const QA_SOURCE_VALUE_PATTERN = /^<!--\s*source:\s*([^>]+?)\s*-->$/i;
 const QA_SOURCE_TEST_PATTERN = /<!--\s*source:\s*[^>]+?\s*-->/i;
 const QA_SECTION_BOUNDARY_PATTERN =
   /^##\s+.+?<!--\s*qa-section\s*-->\s*$/i;
+const TERMINOLOGY_SECTION_BOUNDARY_PATTERN =
+  /^##\s+.+?<!--\s*terminology-section\s*-->\s*$/i;
 const ORDERED_ITEM_PATTERN = /^ {0,3}\d+[.)、]\s+/;
 
 interface QaSection {
@@ -20,13 +22,61 @@ function findQaSection(text: string): QaSection {
   const boundaryIndex = lines.findIndex((line) =>
     QA_SECTION_BOUNDARY_PATTERN.test(line),
   );
+  const nextH2Offset = boundaryIndex >= 0
+    ? lines.slice(boundaryIndex + 1).findIndex((line) => /^##\s+/u.test(line))
+    : -1;
+  const endIndex = nextH2Offset >= 0
+    ? boundaryIndex + 1 + nextH2Offset
+    : lines.length;
+
+  return boundaryIndex >= 0
+    ? {
+        content: lines.slice(boundaryIndex + 1, endIndex).join("\n"),
+        hasBoundary: true,
+      }
+    : { content: text, hasBoundary: false };
+}
+
+interface TerminologySection {
+  content: string;
+  hasBoundary: boolean;
+}
+
+function findTerminologySection(text: string): TerminologySection {
+  const lines = text.split("\n");
+  const boundaryIndex = lines.findIndex((line) =>
+    TERMINOLOGY_SECTION_BOUNDARY_PATTERN.test(line),
+  );
 
   return boundaryIndex >= 0
     ? {
         content: lines.slice(boundaryIndex + 1).join("\n"),
         hasBoundary: true,
       }
-    : { content: text, hasBoundary: false };
+    : { content: "", hasBoundary: false };
+}
+
+function inspectTerminologyTable(text: string): {
+  hasTable: boolean;
+  rowCount: number;
+} {
+  const { content } = findTerminologySection(text);
+  const lines = content.split("\n");
+  const separatorIndex = lines.findIndex((line) =>
+    /^\s*\|?\s*:?-{3,}:?\s*\|\s*:?-{3,}:?\s*\|?\s*$/u.test(line),
+  );
+  if (separatorIndex <= 0 || !lines[separatorIndex - 1].includes("|")) {
+    return { hasTable: false, rowCount: 0 };
+  }
+
+  let rowCount = 0;
+  for (const line of lines.slice(separatorIndex + 1)) {
+    if (!line.trim()) continue;
+    if (!line.includes("|") || /^##\s+/u.test(line)) break;
+    rowCount += 1;
+  }
+
+  return { hasTable: true, rowCount };
 }
 
 function countReviewQuestions(text: string): number {
@@ -101,7 +151,10 @@ function collectHeadingTitles(text: string): Set<string> {
   return new Set(
     (text.match(/^##\s+.+?\s*$/gm) ?? [])
       .map((heading) => heading.replace(/^##\s+/u, ""))
-      .filter((title) => !/<!--\s*qa-section\s*-->/i.test(title))
+      .filter(
+        (title) =>
+          !/<!--\s*(?:qa|terminology)-section\s*-->/i.test(title),
+      )
       .map((title) =>
         title
           .replace(/<!--[^>]*-->/g, "")
@@ -145,6 +198,8 @@ export function evaluateChapterQuality(
   const questionCount = countReviewQuestions(text);
   const qaAnchors = collectQaAnchors(text);
   const hasQaSectionBoundary = findQaSection(text).hasBoundary;
+  const terminologySection = findTerminologySection(text);
+  const terminologyTable = inspectTerminologyTable(text);
   const headingTitles = collectHeadingTitles(structureText);
   const invalidQaAnchorCount = qaAnchors.filter(
     (anchor) => !headingTitles.has(anchor),
@@ -167,6 +222,9 @@ export function evaluateChapterQuality(
     qaAnchorCount: qaAnchors.length,
     invalidQaAnchorCount,
     hasQaSectionBoundary,
+    hasTerminologySectionBoundary: terminologySection.hasBoundary,
+    hasTerminologyTable: terminologyTable.hasTable,
+    terminologyRowCount: terminologyTable.rowCount,
     formulaCount,
     bulletLines,
     paragraphBlocks,
@@ -176,8 +234,8 @@ export function evaluateChapterQuality(
     likelyTooGlossaryLike: bulletLines > 40 && paragraphBlocks < 20,
     insufficientQuestionCount:
       questionCount < density.retrievalQuestions,
-    insufficientH2Count: h2Count < 5,
-    excessiveHeadingCount: headingCount > maxHeadingCount || h2Count > 9,
+    insufficientH2Count: h2Count < 6,
+    excessiveHeadingCount: headingCount > maxHeadingCount || h2Count > 11,
     headingDepthJump: hasHeadingDepthJump(structureText),
     hasOverdeepHeading: /^#{4,}\s+/m.test(structureText),
     unexpectedH1: /^#\s+/m.test(structureText),
@@ -208,6 +266,13 @@ export function getChapterQualityWarnings(
   }
   if (!report.hasQaSectionBoundary) {
     warnings.push("missing deterministic QA section boundary");
+  }
+  if (!report.hasTerminologySectionBoundary) {
+    warnings.push("missing final terminology section boundary");
+  } else if (!report.hasTerminologyTable) {
+    warnings.push("final terminology section must contain a Markdown table");
+  } else if (report.terminologyRowCount < 5) {
+    warnings.push("final terminology table contains too few terms");
   }
 
   return warnings;

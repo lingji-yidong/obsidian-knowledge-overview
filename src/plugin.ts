@@ -595,13 +595,12 @@ export default class KnowledgePlugin extends Plugin {
       }
 
       if (generated.qualityWarnings.length > 0) {
-        new Notice(
-          `⚠ ${fileName}: ${generated.qualityWarnings.join("; ")}`,
-          8000,
+        console.debug(
+          `Knowledge Overview quality diagnostics for ${fileName}:`,
+          generated.qualityWarnings,
         );
-      } else {
-        new Notice(`✓ ${fileName}`);
       }
+      new Notice(`✓ ${fileName}`);
       result = {
         chapterNum: chapter.chapterNumber,
         title: chapter.title,

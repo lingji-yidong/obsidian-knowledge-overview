@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.0.11
+
+- Restore important English terminology at natural first-use points in
+  non-English chapter prose and add a compact final user-language/English
+  terminology table.
+- Add deterministic terminology structure checks and regression coverage
+  without increasing the normal model-request budget.
+- Keep non-blocking quality diagnostics in developer logs instead of presenting
+  them as warning-filled user notifications.
+- Update the development-only `fast-uri` lock entry to the patched release
+  reported clean by `npm audit`.
+
 ## 0.0.10
 
 - Move the Node-only generation evaluation harness under `tests/eval/` so

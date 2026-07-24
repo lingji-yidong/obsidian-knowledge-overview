@@ -1,4 +1,8 @@
-import { getLanguageLabel, getReviewQuestionHeading } from "./i18n";
+import {
+  getLanguageLabel,
+  getReviewQuestionHeading,
+  getTerminologyHeading,
+} from "./i18n";
 import {
   COURSE_CHAPTER_RANGES,
   MAX_COURSE_CHAPTERS,
@@ -24,6 +28,9 @@ export function buildOutlinePrompt(
 ): string {
   const targetLanguage = getLanguageLabel(language);
   const chapterRange = COURSE_CHAPTER_RANGES[depth];
+  const canonicalTermRule = language === "en"
+    ? "Use standard English wording for every canonical term."
+    : `Write every canonical term as "${targetLanguage} term (English term)". The English text must be the standard subject-specific equivalent, not a transliteration.`;
 
   return `Design one coherent course blueprint for rapid knowledge acquisition,
 review, and interview preparation.
@@ -52,7 +59,7 @@ Schema:
       "outOfScope": ["material reserved for another chapter"],
       "knowledgeType": "conceptual | mathematical | procedural | empirical | craft | historical | interpretive | argumentative | case_based | hybrid",
       "secondaryKnowledgeTypes": ["at most two types from the same list except hybrid"],
-      "canonicalTerms": ["chapter terms whose wording must remain consistent"]
+      "canonicalTerms": ["bilingual chapter terms whose wording must remain consistent"]
     }
   ]
 }
@@ -70,7 +77,9 @@ Blueprint rules:
 - For philosophy, ethics, theory debates, or normative questions, use argumentative.
 - For institutions, policy, and comparative social-science cases, use case_based.
 - Preserve important disagreements and evidence limits in humanities subjects.
-- Use ${targetLanguage} for titles and prose. Canonical terms may include English in parentheses when useful.`;
+- Use ${targetLanguage} for titles and prose.
+- ${canonicalTermRule}
+- Include the important terminology needed across the course and within each chapter; do not defer terminology selection to chapter generation.`;
 }
 
 export function buildInstructionalSystemPrompt(): string {
@@ -95,6 +104,27 @@ export function buildChapterPrompt(args: {
   const { blueprint, chapter, previousChapter, nextChapter } = context;
   const targetLanguage = getLanguageLabel(language);
   const reviewQuestionHeading = getReviewQuestionHeading(language);
+  const terminologyHeading = getTerminologyHeading(language);
+  const terminologyContract = language === "en"
+    ? `- Because the selected output language is English, use standard English subject terminology directly in the prose.
+- End the full chapter with this exact H2 line:
+  ## ${terminologyHeading} <!-- terminology-section -->
+- Under it, provide a compact Markdown table with exactly these columns:
+  | English term | Concise meaning |
+  | --- | --- |
+- Include 8-15 of the most important terms actually taught in the chapter. Do not introduce new concepts in the table.`
+    : `- At the first useful appearance of every important specialized term, write the ${targetLanguage} term followed immediately by its standard English equivalent in parentheses: "${targetLanguage} term (English term)".
+- Treat the canonical course and chapter terms above as mandatory bilingual terminology. Add other important terms needed to understand this chapter.
+- At least 5 distinct terms from the final terminology table must also appear in the teaching prose in that bilingual form. This applies equally to STEM, humanities, history, literature, and social science.
+- Integrate bilingual terms naturally into explanatory sentences and paragraphs. Do not reserve all English terminology for the final table, and do not repeat the English parenthesis on every later mention.
+- A chapter that gives English equivalents only in the final table is invalid.
+- Use the accepted subject-specific English term, not a transliteration of the ${targetLanguage} wording.
+- End the full chapter with this exact H2 line:
+  ## ${terminologyHeading} <!-- terminology-section -->
+- Under it, provide a compact Markdown table with exactly these columns:
+  | ${targetLanguage} | English |
+  | --- | --- |
+- Include 8-15 of the most important terms actually taught in the chapter, including the canonical terms relevant to this chapter. Do not introduce new concepts in the table.`;
 
   return `Write one self-contained Markdown learning chapter.
 
@@ -144,8 +174,12 @@ Depth: ${density.label} (${depth})
 - End with ${density.retrievalQuestions} review or interview questions.
 - Use the available chapter budget. Do not begin the final questions until every named subtopic and learning objective has received enough explanation, evidence, or worked reasoning to stand on its own.
 - If space is tight, remove repeated introductions, conclusions, and decorative examples before shortening the teaching body.
-- Do not introduce a large glossary or try to mention every related concept.
+- Do not pad the teaching body with unrelated terminology or turn it into a glossary. The required compact terminology table is the only exception.
 - Do not repeat material assigned to the previous or next chapter.
+
+# Bilingual terminology contract
+
+${terminologyContract}
 
 Pedagogical roles to cover naturally when relevant:
 ${formatList(adapter.requiredSections)}
@@ -161,7 +195,7 @@ ${formatList(adapter.reliabilityRules)}
 
 # Heading rules
 
-- Use 4-8 topic-specific teaching H2 headings that explain what the section teaches, then one final QA H2; the chapter must have 5-9 H2 headings in total.
+- Use 4-9 topic-specific teaching H2 headings that explain what the section teaches, followed by one QA H2 and one final terminology H2; the chapter must have 6-11 H2 headings in total.
 - H2 teaching headings should form a clear learning progression.
 - Do not add section-number prefixes to headings; the application adds chapter-aware numbering after generation.
 - Prefer connected explanatory paragraphs. Do not turn each example, misconception, field, or workflow step into its own heading.
@@ -180,12 +214,13 @@ ${formatList(adapter.reliabilityRules)}
 - Every review question must be answerable from the chapter body without outside knowledge.
 - A question may combine at most two claims explicitly taught in the body.
 - Do not introduce a new concept, formula, historical fact, text, author, procedure, or case for the first time in a question.
-- End the teaching body with this exact localized H2 line:
+- End the teaching body with this exact localized QA H2 line:
   ## ${reviewQuestionHeading} <!-- qa-section -->
-- Put only the requested numbered questions under that final H2. Do not add a summary, answer key, or another heading after it.
+- Put only the requested numbered questions under the QA H2. Do not add a summary or answer key.
 - After every question, on the same line, add an invisible source anchor using the exact H2 title that teaches the answer:
   <!-- source: Exact H2 Title -->
 - The source comment is metadata; do not explain it to the reader.
+- After the QA questions, add only the required terminology H2 and table. The terminology table must be the final content in the chapter.
 
 # Rich Markdown and formula format
 
@@ -200,8 +235,9 @@ ${formatList(adapter.reliabilityRules)}
 # Final self-check
 
 - Before answering, remove any claim whose factual precision you cannot support; state uncertainty when the uncertainty matters.
-- Verify that the body contains no H1 or H4/deeper headings, has 4-8 teaching H2 sections plus the one marked QA H2, uses no more than one H3 per teaching H2 and no more than six H3 headings in total, and stays within the requested scope.
-- Verify that every final question appears after the <!-- qa-section --> H2 boundary, is taught before that boundary, and cites one exact existing teaching H2 on the same line.
+- Verify that the body contains no H1 or H4/deeper headings, has 4-9 teaching H2 sections plus the marked QA and terminology H2 sections, uses no more than one H3 per teaching H2 and no more than six H3 headings in total, and stays within the requested scope.
+- Verify that every final question appears between the <!-- qa-section --> and <!-- terminology-section --> H2 boundaries, is taught before the QA boundary, and cites one exact existing teaching H2 on the same line.
+- For non-English output, count at least 5 distinct final-table terms that also appear bilingually in the teaching prose at their first useful occurrence. Verify that the final terminology table has the required columns and contains only terms taught in the chapter.
 - Verify that every typeset formula uses only \`$...$\` or standalone \`$$\` delimiters and that every Mermaid block has valid syntax.
 
 Start directly with the chapter content. Do not greet the reader, describe the writing process, or add a second H1 title.`;

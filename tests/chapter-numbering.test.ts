@@ -48,6 +48,23 @@ void test("keeps invisible QA anchors aligned with numbered H2 titles", () => {
   assert.match(numbered, /<!-- source: 2\.1 機制如何運作 -->/);
 });
 
+void test("preserves the final terminology marker while numbering its heading", () => {
+  const content = [
+    "## 機制如何運作",
+    "正文",
+    "## 複習與面試問題 <!-- qa-section -->",
+    "1. 為什麼？ <!-- source: 機制如何運作 -->",
+    "## 關鍵術語對照 <!-- terminology-section -->",
+    "| 繁體中文 | English |",
+    "| --- | --- |",
+    "| 機制 | mechanism |",
+  ].join("\n");
+  const numbered = numberChapterHeadings(content, "2");
+
+  assert.match(numbered, /^## 2\.3 關鍵術語對照 <!-- terminology-section -->/m);
+  assert.match(numbered, /\| 機制 \| mechanism \|\s*$/);
+});
+
 void test("numbering is idempotent and ignores fenced examples", () => {
   const content = [
     "## 4.1 Actual section",

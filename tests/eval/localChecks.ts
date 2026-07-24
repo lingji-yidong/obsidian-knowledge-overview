@@ -6,6 +6,7 @@ import {
 import { stripChapterSectionNumber } from "../../src/chapter-numbering";
 import { normalizeObsidianMathDelimiters } from "../../src/chapter-markdown";
 import { DENSITY_PRESETS } from "../../src/densityPresets";
+import { getLanguageLabel } from "../../src/i18n";
 import type { EvaluationCase, LocalChapterMetrics } from "./types";
 
 export const STRUCTURAL_LENGTH_FLOOR_RATIO = 0.8;
@@ -60,13 +61,86 @@ const GENERIC_H2_TITLES = new Set(
 interface H2Entry {
   title: string;
   isQaSection: boolean;
+  isTerminologySection: boolean;
 }
 
 function collectH2Entries(content: string): H2Entry[] {
   return Array.from(content.matchAll(/^##\s+(.+?)\s*$/gm)).map((match) => ({
     title: match[1].replace(/<!--[^>]*-->/g, "").trim(),
     isQaSection: /<!--\s*qa-section\s*-->/i.test(match[1]),
+    isTerminologySection: /<!--\s*terminology-section\s*-->/i.test(match[1]),
   }));
+}
+
+function countInlineBilingualTerms(content: string): number {
+  const terminologyBoundary = content.search(
+    /^##\s+.+?<!--\s*terminology-section\s*-->\s*$/im,
+  );
+  const teachingAndQa = terminologyBoundary >= 0
+    ? content.slice(0, terminologyBoundary)
+    : content;
+  const prose = stripFencedCodeBlocks(teachingAndQa)
+    .split("\n")
+    .filter((line) => !/^\s*(?:#|\|)/u.test(line))
+    .join("\n");
+
+  return (
+    prose.match(
+      /[\p{L}\p{N}][^()\n]{0,60}\(\s*[A-Za-z][A-Za-z0-9 /+&.'’-]{1,60}\s*\)/gu,
+    ) ?? []
+  ).length;
+}
+
+function inspectTerminologyColumns(
+  content: string,
+  language: string,
+): {
+  hasExpectedColumns: boolean;
+  englishTermRowCount: number;
+} {
+  const boundary = content.search(
+    /^##\s+.+?<!--\s*terminology-section\s*-->\s*$/im,
+  );
+  if (boundary < 0) {
+    return { hasExpectedColumns: false, englishTermRowCount: 0 };
+  }
+
+  const tableLines = content
+    .slice(boundary)
+    .split("\n")
+    .filter((line) => /^\s*\|.*\|\s*$/u.test(line));
+  if (tableLines.length < 3) {
+    return { hasExpectedColumns: false, englishTermRowCount: 0 };
+  }
+
+  const readCells = (line: string): string[] =>
+    line
+      .trim()
+      .replace(/^\||\|$/g, "")
+      .split("|")
+      .map((cell) => cell.trim());
+  const headers = readCells(tableLines[0]);
+  const expectedFirst = language === "en"
+    ? "english term"
+    : getLanguageLabel(language).toLocaleLowerCase();
+  const expectedSecond = language === "en"
+    ? "concise meaning"
+    : "english";
+  const hasExpectedColumns =
+    headers.length === 2 &&
+    headers[0].toLocaleLowerCase() === expectedFirst &&
+    headers[1].toLocaleLowerCase() === expectedSecond;
+  const englishTermRowCount = tableLines
+    .slice(2)
+    .map(readCells)
+    .filter(
+      (cells) =>
+        cells.length === 2 &&
+        cells[0].length > 0 &&
+        /[A-Za-z]/u.test(cells[1]),
+    ).length;
+
+  return { hasExpectedColumns, englishTermRowCount };
 }
 
 function includesCaseInsensitive(content: string, term: string): boolean {
@@ -94,7 +168,10 @@ export function evaluateLocalChapter(
   const h2Entries = collectH2Entries(structureContent);
   const h2Titles = h2Entries.map(({ title }) => title);
   const normalizedH2 = h2Entries
-    .filter(({ isQaSection }) => !isQaSection)
+    .filter(
+      ({ isQaSection, isTerminologySection }) =>
+        !isQaSection && !isTerminologySection,
+    )
     .map(({ title }) =>
       stripChapterSectionNumber(title).toLocaleLowerCase(),
     );
@@ -123,6 +200,13 @@ export function evaluateLocalChapter(
       : Math.min(1, quality.qaAnchorCount / quality.questionCount);
   const usesUnsupportedMathDelimiters =
     normalizeObsidianMathDelimiters(content) !== content;
+  const inlineBilingualTermCount = evaluationCase.language === "en"
+    ? 0
+    : countInlineBilingualTerms(content);
+  const terminologyColumns = inspectTerminologyColumns(
+    content,
+    evaluationCase.language,
+  );
   const warnings = getChapterQualityWarnings(quality);
 
   if (genericH2Ratio > 0.35) {
@@ -147,6 +231,18 @@ export function evaluateLocalChapter(
   if (usesUnsupportedMathDelimiters) {
     warnings.push("uses math delimiters that Obsidian does not render");
   }
+  if (evaluationCase.language !== "en" && inlineBilingualTermCount < 5) {
+    warnings.push("too few bilingual terms appear naturally before the final table");
+  }
+  if (quality.hasTerminologyTable && !terminologyColumns.hasExpectedColumns) {
+    warnings.push("final terminology table does not use the required columns");
+  }
+  if (
+    quality.hasTerminologyTable &&
+    terminologyColumns.englishTermRowCount < 5
+  ) {
+    warnings.push("final terminology table contains too few English terms");
+  }
 
   const structuralPass = !(
     !meetsStructuralLengthFloor ||
@@ -162,7 +258,13 @@ export function evaluateLocalChapter(
     quality.invalidQaAnchorCount > 0 ||
     genericH2Ratio > 0.35 ||
     uniqueH2Ratio < 1 ||
-    usesUnsupportedMathDelimiters
+    usesUnsupportedMathDelimiters ||
+    !quality.hasTerminologySectionBoundary ||
+    !quality.hasTerminologyTable ||
+    quality.terminologyRowCount < 5 ||
+    !terminologyColumns.hasExpectedColumns ||
+    terminologyColumns.englishTermRowCount < 5 ||
+    (evaluationCase.language !== "en" && inlineBilingualTermCount < 5)
   );
 
   return {
@@ -183,6 +285,14 @@ export function evaluateLocalChapter(
       genericH2Ratio,
     },
     qa: { anchorCoverage: qaAnchorCoverage },
+    terminology: {
+      hasSectionBoundary: quality.hasTerminologySectionBoundary,
+      hasTable: quality.hasTerminologyTable,
+      hasExpectedColumns: terminologyColumns.hasExpectedColumns,
+      rowCount: quality.terminologyRowCount,
+      englishTermRowCount: terminologyColumns.englishTermRowCount,
+      inlineBilingualTermCount,
+    },
     format: { usesUnsupportedMathDelimiters },
     lexicalScope: {
       coveredMustCoverTerms,
@@ -201,8 +311,11 @@ export function findRepeatedHeadingSkeletons(
   const headingCases = new Map<string, Set<string>>();
 
   for (const metric of metrics) {
-    const headings = metric.quality.hasQaSectionBoundary
-      ? metric.headings.h2Titles.slice(0, -1)
+    const functionalHeadingCount =
+      Number(metric.quality.hasQaSectionBoundary) +
+      Number(metric.quality.hasTerminologySectionBoundary);
+    const headings = functionalHeadingCount > 0
+      ? metric.headings.h2Titles.slice(0, -functionalHeadingCount)
       : metric.headings.h2Titles;
     for (const heading of headings) {
       const normalized = heading.trim().toLocaleLowerCase();

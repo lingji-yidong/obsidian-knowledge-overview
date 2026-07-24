@@ -52,6 +52,14 @@ export interface LocalChapterMetrics {
   qa: {
     anchorCoverage: number;
   };
+  terminology: {
+    hasSectionBoundary: boolean;
+    hasTable: boolean;
+    hasExpectedColumns: boolean;
+    rowCount: number;
+    englishTermRowCount: number;
+    inlineBilingualTermCount: number;
+  };
   format: {
     usesUnsupportedMathDelimiters: boolean;
   };

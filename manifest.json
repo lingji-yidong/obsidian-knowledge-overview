@@ -1,7 +1,7 @@
 {
   "id": "knowledge-overview",
   "name": "Knowledge Overview",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "minAppVersion": "1.12.7",
   "description": "Generate structured subject overviews using AI.",
   "author": "obafgkm42",

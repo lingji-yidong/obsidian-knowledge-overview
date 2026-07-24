@@ -77,7 +77,8 @@ Every completed case is checkpointed under `eval/runs/`. A run contains:
 
 - generated Markdown;
 - model and token provenance;
-- local length, heading, scope, QA, and Obsidian math-delimiter checks;
+- local length, heading, scope, QA, bilingual-terminology, and Obsidian
+  math-delimiter checks;
 - `agent-review-packet.md` for semantic review.
 
 Regenerate local checks without calling the provider:

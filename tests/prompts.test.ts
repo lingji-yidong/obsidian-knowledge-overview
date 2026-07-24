@@ -44,6 +44,18 @@ void test("outline prompt produces one bounded cross-domain blueprint", () => {
   assert.match(prompt, /interpretive/);
   assert.match(prompt, /argumentative/);
   assert.match(prompt, /case_based/);
+  assert.match(prompt, /Use standard English wording for every canonical term/);
+});
+
+void test("outline prompt preserves bilingual terminology in non-English blueprints", () => {
+  const prompt = buildOutlinePrompt("敘事學", "zh_tw", "onboarding");
+
+  assert.match(
+    prompt,
+    /Write every canonical term as "繁體中文 term \(English term\)"/,
+  );
+  assert.match(prompt, /standard subject-specific equivalent, not a transliteration/);
+  assert.match(prompt, /do not defer terminology selection to chapter generation/);
 });
 
 void test("density presets stay near the chapter budget and keep a real upper bound", () => {
@@ -78,8 +90,8 @@ void test("chapter prompt uses semantic headings and body-grounded QA", () => {
     density: DENSITY_PRESETS.onboarding,
   });
 
-  assert.match(prompt, /Use 4-8 topic-specific teaching H2 headings/);
-  assert.match(prompt, /the chapter must have 5-9 H2 headings in total/);
+  assert.match(prompt, /Use 4-9 topic-specific teaching H2 headings/);
+  assert.match(prompt, /the chapter must have 6-11 H2 headings in total/);
   assert.match(prompt, /at most one H3 under any teaching H2/);
   assert.match(prompt, /at most six H3 headings in the whole chapter/);
   assert.match(prompt, /Never use H4 or deeper headings/);
@@ -90,7 +102,7 @@ void test("chapter prompt uses semantic headings and body-grounded QA", () => {
   assert.match(prompt, /same contested narrator, witness, editor, or source/);
   assert.doesNotMatch(prompt, /intention-to-treat preserves comparison/);
   assert.doesNotMatch(prompt, /track actors, offices or institutions/);
-  assert.match(prompt, /body contains no H1 or H4\/deeper headings, has 4-8 teaching H2 sections/);
+  assert.match(prompt, /body contains no H1 or H4\/deeper headings, has 4-9 teaching H2 sections/);
   assert.match(prompt, /Inline formulas must use one dollar sign/);
   assert.match(prompt, /Never use `\\\(\.\.\.\\\)` or `\\\[\.\.\.\\\]`/);
   assert.match(prompt, /valid Mermaid syntax/);
@@ -99,6 +111,8 @@ void test("chapter prompt uses semantic headings and body-grounded QA", () => {
   assert.match(prompt, /Every review question must be answerable from the chapter body/);
   assert.match(prompt, /<!-- source: Exact H2 Title -->/);
   assert.match(prompt, /## Review and interview questions <!-- qa-section -->/);
+  assert.match(prompt, /## Key terminology <!-- terminology-section -->/);
+  assert.match(prompt, /\| English term \| Concise meaning \|/);
   assert.match(prompt, /film adaptation/);
   assert.match(prompt, /textual evidence/);
 
@@ -113,6 +127,38 @@ void test("chapter prompt uses semantic headings and body-grounded QA", () => {
   assert.match(
     traditionalChinesePrompt,
     /## 複習與面試問題 <!-- qa-section -->/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /## 關鍵術語對照 <!-- terminology-section -->/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /繁體中文 term followed immediately by its standard English equivalent/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /\| 繁體中文 \| English \|/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /Do not reserve all English terminology for the final table/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /At least 5 distinct terms from the final terminology table/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /applies equally to STEM, humanities, history, literature, and social science/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /English equivalents only in the final table is invalid/,
+  );
+  assert.match(
+    traditionalChinesePrompt,
+    /terminology table must be the final content in the chapter/,
   );
 });
 

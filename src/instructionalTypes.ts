@@ -105,6 +105,9 @@ export interface ChapterQualityReport {
   qaAnchorCount: number;
   invalidQaAnchorCount: number;
   hasQaSectionBoundary: boolean;
+  hasTerminologySectionBoundary: boolean;
+  hasTerminologyTable: boolean;
+  terminologyRowCount: number;
   formulaCount: number;
   bulletLines: number;
   paragraphBlocks: number;

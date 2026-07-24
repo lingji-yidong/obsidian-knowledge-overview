@@ -16,6 +16,8 @@ unfamiliar subject.
 - One Markdown note per chapter.
 - Numbered sections such as `3.1` and `3.1.1`.
 - Explanations, examples, formulas, common mistakes, and review questions.
+- Important terms introduced naturally with their English equivalents, plus a
+  compact user-language/English terminology table at the end of each chapter.
 - A model and token-usage footer at the end of each chapter.
 - A failed-chapter list that can be resumed later.
 

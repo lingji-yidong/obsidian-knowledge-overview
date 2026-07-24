@@ -52,7 +52,7 @@ Write `codex-review.json` beside the run manifest:
 }
 ```
 
-Scores must be integers from 1 to 5. Review the body before the final QA section when judging whether a question was taught. `Derivable` may combine at most two explicit body claims; outside facts, new definitions, new formulas, and new procedures make a question `unsupported`.
+Scores must be integers from 1 to 5. Review the body before the final QA section when judging whether a question was taught. `Derivable` may combine at most two explicit body claims; outside facts, new definitions, new formulas, and new procedures make a question `unsupported`. For non-English output, verify that important terms carry accurate English equivalents at their first useful occurrence and that the final user-language/English table contains only terminology already taught.
 
 The configured chapter minimum is a soft density target, not an automatic
 semantic failure. A chapter at or above 80% of that target may pass when its

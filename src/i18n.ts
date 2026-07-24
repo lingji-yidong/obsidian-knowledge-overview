@@ -48,6 +48,31 @@ const REVIEW_QUESTION_HEADING_TEXT: Record<string, string> = {
   ru: "Вопросы для повторения и собеседования",
 };
 
+const TERMINOLOGY_HEADING_TEXT: Record<string, string> = {
+  en: "Key terminology",
+  zh: "关键术语对照",
+  zh_tw: "關鍵術語對照",
+  ja: "重要用語対照",
+  ko: "핵심 용어 대조표",
+  vi: "Thuật ngữ chính",
+  th: "คำศัพท์สำคัญ",
+  id: "Istilah kunci",
+  ms: "Istilah utama",
+  hi: "मुख्य शब्दावली",
+  ar: "المصطلحات الأساسية",
+  de: "Zentrale Fachbegriffe",
+  fr: "Terminologie clé",
+  es: "Terminología clave",
+  it: "Terminologia chiave",
+  pt: "Terminologia essencial",
+  nl: "Belangrijke vaktermen",
+  sv: "Centrala facktermer",
+  fi: "Keskeinen terminologia",
+  pl: "Kluczowa terminologia",
+  tr: "Temel terimler",
+  ru: "Ключевые термины",
+};
+
 export interface HeaderText {
   outlineTitle: string;
   generatedAt: string;
@@ -788,6 +813,11 @@ export function getLanguageLabel(language: string): string {
 export function getReviewQuestionHeading(language: string): string {
   return REVIEW_QUESTION_HEADING_TEXT[language] ??
     REVIEW_QUESTION_HEADING_TEXT.en;
+}
+
+export function getTerminologyHeading(language: string): string {
+  return TERMINOLOGY_HEADING_TEXT[language] ??
+    TERMINOLOGY_HEADING_TEXT.en;
 }
 
 export function getHeaderText(language: string): HeaderText {

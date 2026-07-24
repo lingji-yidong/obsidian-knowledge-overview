@@ -41,10 +41,21 @@ const CASE: EvaluationCase = {
   },
 };
 
+const TERMINOLOGY_TABLE = [
+  "## 關鍵術語對照 <!-- terminology-section -->",
+  "| 繁體中文 | English |",
+  "| --- | --- |",
+  "| 取樣頻率 | sampling frequency |",
+  "| 混疊 | aliasing |",
+  "| 抗混疊濾波器 | anti-aliasing filter |",
+  "| 頻譜 | spectrum |",
+  "| 奈奎斯特頻率 | Nyquist frequency |",
+].join("\n");
+
 void test("local evaluator separates structural gates from lexical warnings", () => {
   const sections = [
     "## Sampling creates spectral copies",
-    `Nyquist ${"x".repeat(1800)}`,
+    `取樣頻率 (sampling frequency)、混疊 (aliasing)、抗混疊濾波器 (anti-aliasing filter)、頻譜 (spectrum) 與奈奎斯特頻率 (Nyquist frequency)。 Nyquist ${"x".repeat(1800)}`,
     "## Overlap destroys identity",
     "x".repeat(1800),
     "## A numerical diagnosis",
@@ -57,18 +68,52 @@ void test("local evaluator separates structural gates from lexical warnings", ()
       (_, index) =>
         `Why ${index}? <!-- source: Sampling creates spectral copies -->`,
     ),
+    TERMINOLOGY_TABLE,
   ];
   const metrics = evaluateLocalChapter(CASE, sections.join("\n\n"));
 
   assert.equal(metrics.structuralPass, true);
   assert.equal(metrics.qa.anchorCoverage, 1);
+  assert.equal(metrics.terminology.inlineBilingualTermCount, 5);
+  assert.equal(metrics.terminology.rowCount, 5);
+  assert.equal(metrics.terminology.hasExpectedColumns, true);
+  assert.equal(metrics.terminology.englishTermRowCount, 5);
   assert.deepEqual(metrics.lexicalScope.coveredMustCoverTerms, ["Nyquist"]);
+});
+
+void test("local evaluator rejects a monolingual terminology table", () => {
+  const content = [
+    "## Sampling creates spectral copies",
+    `取樣頻率 (sampling frequency)、混疊 (aliasing)、抗混疊濾波器 (anti-aliasing filter)、頻譜 (spectrum) 與奈奎斯特頻率 (Nyquist frequency)。 Nyquist ${"x".repeat(7200)}`,
+    "## Questions that retrieve the mechanism <!-- qa-section -->",
+    "1. Why? <!-- source: Sampling creates spectral copies -->",
+    [
+      "## 關鍵術語對照 <!-- terminology-section -->",
+      "| 繁體中文 | English |",
+      "| --- | --- |",
+      "| 取樣頻率 | 取樣頻率 |",
+      "| 混疊 | 混疊 |",
+      "| 濾波器 | 濾波器 |",
+      "| 頻譜 | 頻譜 |",
+      "| 奈奎斯特頻率 | 奈奎斯特頻率 |",
+    ].join("\n"),
+  ].join("\n\n");
+  const metrics = evaluateLocalChapter(CASE, content);
+
+  assert.equal(metrics.terminology.hasExpectedColumns, true);
+  assert.equal(metrics.terminology.englishTermRowCount, 0);
+  assert.equal(metrics.structuralPass, false);
+  assert.ok(
+    metrics.warnings.includes(
+      "final terminology table contains too few English terms",
+    ),
+  );
 });
 
 void test("a chapter near the target is warned without failing structurally", () => {
   const sections = [
     "## Sampling creates spectral copies",
-    `Nyquist ${"x".repeat(1450)}`,
+    `取樣頻率 (sampling frequency)、混疊 (aliasing)、抗混疊濾波器 (anti-aliasing filter)、頻譜 (spectrum) 與奈奎斯特頻率 (Nyquist frequency)。 Nyquist ${"x".repeat(1450)}`,
     "## Overlap destroys identity",
     "x".repeat(1450),
     "## A numerical diagnosis",
@@ -81,6 +126,7 @@ void test("a chapter near the target is warned without failing structurally", ()
       (_, index) =>
         `Why ${index}? <!-- source: Sampling creates spectral copies -->`,
     ),
+    TERMINOLOGY_TABLE,
   ];
   const metrics = evaluateLocalChapter(CASE, sections.join("\n\n"));
 
@@ -226,7 +272,7 @@ void test("lexical checks ignore harmless spaces and slashes", () => {
   assert.deepEqual(metrics.lexicalScope.missingMustCoverTerms, []);
 });
 
-void test("repeated heading checks ignore the functional marked QA heading", () => {
+void test("repeated heading checks ignore marked QA and terminology headings", () => {
   const first = evaluateLocalChapter(
     CASE,
     [
@@ -234,6 +280,7 @@ void test("repeated heading checks ignore the functional marked QA heading", () 
       "Nyquist",
       "## Review questions <!-- qa-section -->",
       "1. Explain it. <!-- source: First mechanism -->",
+      TERMINOLOGY_TABLE,
     ].join("\n\n"),
   );
   const second = evaluateLocalChapter(
@@ -243,6 +290,7 @@ void test("repeated heading checks ignore the functional marked QA heading", () 
       "Nyquist",
       "## Review questions <!-- qa-section -->",
       "1. Explain it. <!-- source: Second mechanism -->",
+      TERMINOLOGY_TABLE,
     ].join("\n\n"),
   );
 
